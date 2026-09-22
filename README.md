@@ -1,5 +1,8 @@
 # txBridge · FiveM ↔ applications
 
+<img width="1672" height="941" alt="txBridge" src="https://github.com/user-attachments/assets/58137119-cbf4-4e1a-8962-a7d3ef838b1c" />
+
+
 **Version 0.1.0 — implementation and integration-test candidate.** Server-only Lua resource, WordPress plugin, signed HTTP client, OpenAPI specification, and deployment documentation. No paid dependency, framework dependency, RCON password, or monitor-token extraction is required for the normal integration.
 
 ```text
