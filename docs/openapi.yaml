@@ -1,0 +1,967 @@
+openapi: 3.1.0
+info:
+  title: txBridge Lua resource API
+  version: 0.1.0
+  description: All 21 bridge operations. HMAC signs TXBRIDGE1, server ID, key ID, method, resource-relative raw
+    target, timestamp, nonce, idempotency key and body SHA256, newline-separated with no trailing newline. A static
+    API key is NOT sufficient. See AUTHENTICATION.md. This is not an OpenAPI contract for txAdmin internal handlers.
+  license:
+    name: MIT
+servers:
+- url: https://bridge.example.com/txbridge
+  description: Replace with the private HTTPS resource base; sign the /v1/... suffix only.
+paths:
+  /v1/health:
+    get:
+      operationId: health
+      summary: Private health check
+      description: 'Required scope: `status:read`. '
+      x-txbridge-scope: status:read
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/status:
+    get:
+      operationId: status
+      summary: Native/bridge status
+      description: 'Required scope: `status:read`. '
+      x-txbridge-scope: status:read
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    const: true
+                  data:
+                    $ref: '#/components/schemas/Status'
+                additionalProperties: false
+                required:
+                - ok
+                - data
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/capabilities:
+    get:
+      operationId: capabilities
+      summary: Flags, events and explicit guarantee limitations
+      description: 'Required scope: `status:read`. '
+      x-txbridge-scope: status:read
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/players:
+    get:
+      operationId: players
+      summary: Privacy-filtered connected players
+      description: 'Required scope: `players:read`. '
+      x-txbridge-scope: players:read
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    const: true
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Player'
+                    additionalProperties: false
+                    required:
+                    - items
+                additionalProperties: false
+                required:
+                - ok
+                - data
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/players/{id}/identifiers:
+    get:
+      operationId: playerIdentifiers
+      summary: Explicitly opt-in live identifiers
+      description: 'Required scope: `players:identifiers`. Requires Privacy.exposeIdentifiers. Never returns IP
+        identifiers or hardware tokens.'
+      x-txbridge-scope: players:identifiers
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/resources:
+    get:
+      operationId: resources
+      summary: Resource names and states
+      description: 'Required scope: `resources:read`. '
+      x-txbridge-scope: resources:read
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/events:
+    get:
+      operationId: events
+      summary: Bounded origin-sequence event feed
+      description: 'Required scope: `events:read`. '
+      x-txbridge-scope: events:read
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      - name: after
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+        description: Source sequence; cannot exceed current sequence. Exact query spelling is signed.
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    const: true
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Event'
+                      cursor:
+                        type: integer
+                      latest:
+                        type: integer
+                      oldestAvailable:
+                        type: integer
+                      gap:
+                        type: boolean
+                      authoritative:
+                        const: false
+                    additionalProperties: false
+                    required:
+                    - items
+                    - cursor
+                    - latest
+                    - oldestAvailable
+                    - gap
+                    - authoritative
+                additionalProperties: false
+                required:
+                - ok
+                - data
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/audit:
+    get:
+      operationId: audit
+      summary: Private bounded, non-tamper-proof local audit
+      description: 'Required scope: `audit:read`. '
+      x-txbridge-scope: audit:read
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/webhooks:
+    get:
+      operationId: webhooks
+      summary: Queue and endpoint metadata without credentials
+      description: 'Required scope: `webhooks:read`. '
+      x-txbridge-scope: webhooks:read
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/webhooks/dead-letters:
+    get:
+      operationId: deadLetters
+      summary: Retained failed-delivery metadata
+      description: 'Required scope: `webhooks:read`. '
+      x-txbridge-scope: webhooks:read
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/txadmin/state:
+    get:
+      operationId: txAdminObservedState
+      summary: Incomplete observed state, not a database snapshot
+      description: 'Required scope: `events:read`. '
+      x-txbridge-scope: events:read
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/txadmin/routes:
+    get:
+      operationId: txAdminRoutes
+      summary: Full pinned central-router inventory
+      description: 'Required scope: `status:read`. '
+      x-txbridge-scope: status:read
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/txadmin/host/status:
+    get:
+      operationId: txAdminHostStatus
+      summary: Optional separately authenticated host status
+      description: 'Required scope: `txadmin:host`. Requires hostStatusEnabled and a matching configured TXHOST_API_TOKEN.'
+      x-txbridge-scope: txadmin:host
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/actions/announce:
+    post:
+      operationId: announce
+      summary: Opt-in native chat announcement
+      description: 'Required scope: `actions:announce`. Requires Actions.announce and a started standard chat resource.
+        Not a txAdmin database action.'
+      x-txbridge-scope: actions:announce
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      - $ref: '#/components/parameters/Idempotency'
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        description: Exact UTF-8 JSON object bytes are signed. Maximum 32 KiB. Native handlers reject unknown properties.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Message'
+  /v1/players/{id}/actions/message:
+    post:
+      operationId: messagePlayer
+      summary: Opt-in native private chat
+      description: 'Required scope: `actions:message`. Requires Actions.message, chat, and the current player sessionId.
+        512-byte, nonblank, single-line message.'
+      x-txbridge-scope: actions:message
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      - $ref: '#/components/parameters/Idempotency'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        description: Exact UTF-8 JSON object bytes are signed. Maximum 32 KiB. Native handlers reject unknown properties.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlayerMessage'
+  /v1/players/{id}/actions/kick:
+    post:
+      operationId: kickPlayer
+      summary: Opt-in native DropPlayer
+      description: 'Required scope: `actions:kick`. Requires Actions.kick and current player sessionId. Not a txAdmin
+        ban/history operation. 256-byte, nonblank, single-line reason.'
+      x-txbridge-scope: actions:kick
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      - $ref: '#/components/parameters/Idempotency'
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        description: Exact UTF-8 JSON object bytes are signed. Maximum 32 KiB. Native handlers reject unknown properties.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlayerKick'
+  /v1/resources/{name}/actions/start:
+    post:
+      operationId: startResource
+      summary: Opt-in allowlisted resource start
+      description: 'Required scope: `actions:resource`. Requires Actions.resources, an exact allowlist and a nonprotected
+        resource. Partial transition failure is possible.'
+      x-txbridge-scope: actions:resource
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      - $ref: '#/components/parameters/Idempotency'
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        description: Exact UTF-8 JSON object bytes are signed. Maximum 32 KiB. Native handlers reject unknown properties.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyObject'
+  /v1/resources/{name}/actions/stop:
+    post:
+      operationId: stopResource
+      summary: Opt-in allowlisted resource stop
+      description: 'Required scope: `actions:resource`. Requires Actions.resources, an exact allowlist and a nonprotected
+        resource. Partial transition failure is possible.'
+      x-txbridge-scope: actions:resource
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      - $ref: '#/components/parameters/Idempotency'
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        description: Exact UTF-8 JSON object bytes are signed. Maximum 32 KiB. Native handlers reject unknown properties.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyObject'
+  /v1/resources/{name}/actions/restart:
+    post:
+      operationId: restartResource
+      summary: Opt-in allowlisted resource restart
+      description: 'Required scope: `actions:resource`. Requires Actions.resources, an exact allowlist and a nonprotected
+        resource. Partial transition failure is possible.'
+      x-txbridge-scope: actions:resource
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      - $ref: '#/components/parameters/Idempotency'
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        description: Exact UTF-8 JSON object bytes are signed. Maximum 32 KiB. Native handlers reject unknown properties.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyObject'
+  /v1/webhooks/retry:
+    post:
+      operationId: retryWebhook
+      summary: Requeue a retained dead letter
+      description: 'Required scope: `webhooks:write`. '
+      x-txbridge-scope: webhooks:write
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      - $ref: '#/components/parameters/Idempotency'
+      responses:
+        '202':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        description: Exact UTF-8 JSON object bytes are signed. Maximum 32 KiB. Native handlers reject unknown properties.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Retry'
+  /v1/txadmin/request:
+    post:
+      operationId: txAdminRequest
+      summary: Experimental named internal-route request
+      description: 'Required scope: `txadmin:<routeId>`. Requires experimental flag, exact route/params rule, audited-revision
+        acknowledgement and authorized limited web session. Auth lifecycle, intercom and development routes cannot
+        be proxied. Upstream payload schemas are not standardized; raw responses may contain sensitive data.'
+      x-txbridge-scope: txadmin:<routeId>
+      security:
+      - requestHmac: []
+      parameters:
+      - $ref: '#/components/parameters/Key'
+      - $ref: '#/components/parameters/Timestamp'
+      - $ref: '#/components/parameters/Nonce'
+      - $ref: '#/components/parameters/Idempotency'
+      responses:
+        '200':
+          description: Success envelope. Check `ok` as well as HTTP status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        default:
+          description: Error envelope. 409 includes replay/pending/idempotency conflicts. 503 includes bounded-store
+            capacity errors. Upstream writes may have an unknown outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        description: Exact UTF-8 JSON object bytes are signed. Maximum 32 KiB. Native handlers reject unknown properties.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TxAdminRequest'
+components:
+  securitySchemes:
+    requestHmac:
+      type: apiKey
+      in: header
+      name: X-TxBridge-Signature
+      description: Computed per request as lowercase hex HMAC-SHA256. Requires the separate key/timestamp/nonce
+        headers and a POST idempotency key. See AUTHENTICATION.md.
+  parameters:
+    Key:
+      name: X-TxBridge-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9_-]{1,64}$
+      description: Configured key ID, not the secret.
+    Timestamp:
+      name: X-TxBridge-Timestamp
+      in: header
+      required: true
+      schema:
+        type: string
+        pattern: ^[0-9]{10}$
+      description: Unix seconds; default accepted skew ±90 seconds.
+    Nonce:
+      name: X-TxBridge-Nonce
+      in: header
+      required: true
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9_-]{24,128}$
+      description: Fresh value for each attempt. Replays are rejected even on POST retries.
+    Idempotency:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9_-]{16,128}$
+      description: Required for every POST. Reuse only for an identical retry with a fresh signature/nonce.
+  schemas:
+    Error:
+      type: object
+      properties:
+        ok:
+          const: false
+        error:
+          type: object
+          properties:
+            code: &id001
+              type: string
+            message: *id001
+          additionalProperties: true
+          required:
+          - code
+          - message
+      additionalProperties: false
+      required:
+      - ok
+      - error
+    Success:
+      type: object
+      properties:
+        ok:
+          const: true
+        data: {}
+      additionalProperties: false
+      required:
+      - ok
+      - data
+    Status:
+      type: object
+      properties:
+        serverId: *id001
+        version: *id001
+        resource: *id001
+        hostname: *id001
+        players:
+          type: integer
+          minimum: 0
+        maxPlayers:
+          type: integer
+          minimum: 0
+        bridgeStartedAt:
+          type: integer
+        bridgeUptimeSeconds:
+          type: integer
+        fxserverVersion: *id001
+        monitorState: *id001
+        observedAt:
+          type: integer
+        processState:
+          const: running
+        eventSequence:
+          type: integer
+        queue:
+          type: object
+        fault:
+          type:
+          - boolean
+          - string
+        metrics:
+          type: object
+      additionalProperties: true
+      required:
+      - serverId
+      - players
+      - maxPlayers
+      - observedAt
+    Player:
+      type: object
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        sessionId: *id001
+        name: *id001
+        ping:
+          type: integer
+      additionalProperties: false
+      required:
+      - id
+      - sessionId
+      - name
+      - ping
+    Event:
+      type: object
+      properties:
+        version:
+          const: 1
+        id: *id001
+        sequence:
+          type: integer
+          minimum: 1
+        serverId: *id001
+        type: *id001
+        origin: *id001
+        emittedAt:
+          type: integer
+        data:
+          type:
+          - object
+          - array
+      additionalProperties: true
+      required:
+      - version
+      - id
+      - sequence
+      - serverId
+      - type
+      - emittedAt
+      - data
+    Message:
+      type: object
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Maximum 512 UTF-8 bytes; nonblank, no control characters.
+      additionalProperties: false
+      required:
+      - message
+    PlayerMessage:
+      type: object
+      properties:
+        sessionId: *id001
+        message:
+          type: string
+          minLength: 1
+          maxLength: 512
+      additionalProperties: false
+      required:
+      - sessionId
+      - message
+    PlayerKick:
+      type: object
+      properties:
+        sessionId: *id001
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 256
+      additionalProperties: false
+      required:
+      - sessionId
+      - reason
+    EmptyObject:
+      type: object
+      properties: {}
+      additionalProperties: false
+    Retry:
+      type: object
+      properties:
+        deliveryId:
+          type: string
+          minLength: 1
+          maxLength: 192
+      additionalProperties: false
+      required:
+      - deliveryId
+    TxAdminRequest:
+      type: object
+      properties:
+        route: *id001
+        params:
+          type: object
+          additionalProperties:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{1,64}$
+        query:
+          type: object
+          maxProperties: 20
+          additionalProperties:
+            type:
+            - string
+            - number
+            - boolean
+        body:
+          description: Passed to the upstream POST handler, which validates its own schema. Omit for upstream GET.
+      additionalProperties: false
+      required:
+      - route
+externalDocs:
+  description: Upstream baseline; txBridge docs are included in this package.
+  url: https://github.com/citizenfx/txAdmin/tree/8a9a41410000fd92a527fe11bae2b8eeeb8b10e0

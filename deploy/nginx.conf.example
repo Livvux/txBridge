@@ -1,0 +1,39 @@
+# Merge into your existing Nginx configuration. Replace the domain, certificate paths,
+# and 203.0.113.10 with your WordPress/application server's ACTUAL public egress IP.
+# This assumes Nginx and FXServer share a host; otherwise use a private network and
+# allow that proxy's ACTUAL private socket IP in Config.Http.allowedPeers.
+# The limit_req_zone directive belongs in the http {} context, once.
+limit_req_zone $binary_remote_addr zone=txbridge_api:10m rate=2r/s;
+
+server {
+    listen 443 ssl;
+    server_name bridge.example.com;
+    ssl_certificate /etc/letsencrypt/live/bridge.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/bridge.example.com/privkey.pem;
+
+    location /txbridge/ {
+        allow 203.0.113.10;
+        deny all;
+        limit_req zone=txbridge_api burst=10 nodelay;
+        limit_req_status 429;
+        client_max_body_size 32k;
+        client_body_timeout 5s;
+        proxy_request_buffering on;
+        proxy_buffering off;
+        proxy_connect_timeout 3s;
+        proxy_read_timeout 15s;
+        # IMPORTANT: no trailing slash on proxy_pass; preserve /txbridge/ in the request.
+        proxy_pass http://127.0.0.1:30120;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        # Lua uses the actual peer and never trusts an incoming X-Forwarded-For.
+        proxy_set_header X-Forwarded-For "";
+        proxy_set_header X-Real-IP "";
+        # Avoid logs containing signed query parameters or operational identifiers.
+        access_log off;
+    }
+    location / { return 404; }
+}
+# Keep txAdmin's panel private. This proxy does NOT expose port 40120 or /intercom.
+# Do not put a browser challenge on either the API or WordPress webhook endpoint.
+# Run `nginx -t` before reloading your own configuration.

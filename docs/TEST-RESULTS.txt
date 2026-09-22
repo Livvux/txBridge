@@ -1,0 +1,181 @@
+txBridge 0.1.0 — local verification record — 2026-09-22
+No live FXServer/txAdmin/WordPress/MySQL/proxy test was performed.
+Environment:
+Python 3.13.5
+PHP 8.4.23 (cli) (built: Jul  3 2026 12:26:56) (NTS)
+v22.16.0
+
+=== Lua real-runtime / FiveM doubles ===
+Lua 5.4 syntax: 11 files passed
+[txBridge] 0.1.0 initialized for main; API peers are allowlisted; write actions are opt-in.
+PASS default request burst is bounded
+PASS SHA-256 empty
+PASS SHA-256 abc
+PASS SHA-256 multi-block
+PASS HMAC RFC 4231 vector 1
+PASS HMAC RFC 4231 long key
+PASS constant-length comparison
+PASS cross-language request protocol vector
+PASS signed health read
+PASS status JSON has no secrets
+PASS unknown client rejected
+PASS weak configured secret rejected
+PASS incorrect signature rejected
+PASS expired timestamp rejected
+PASS future timestamp outside window rejected
+PASS replayed nonce rejected
+PASS future nonce retained through full acceptance window
+PASS unauthorized peer rejected
+PASS forwarded-for cannot bypass peer restriction
+PASS IPv6 loopback recognized
+PASS IPv4-mapped loopback recognized
+PASS duplicate security header rejected
+PASS GET body rejected
+PASS malformed query escape rejected
+PASS duplicate query key rejected
+PASS traversal path rejected
+PASS encoded path rejected
+PASS unknown endpoint is 404
+PASS missing read scope is 403
+PASS player names redacted by default
+PASS raw identifier endpoint disabled without scope
+PASS raw identifier endpoint needs privacy opt-in
+PASS raw identifiers never return IP
+PASS POST requires an idempotency key
+PASS POST must be JSON object
+PASS invalid JSON rejected
+PASS JSON content type is strict
+PASS oversized body rejected
+PASS body tampering rejected
+PASS declared body length mismatch rejected
+PASS slow request body times out
+PASS write action remains disabled after granting scope
+PASS announcement via native chat only
+PASS unknown native action fields rejected
+PASS control characters rejected
+PASS same idempotency key cannot change body
+PASS duplicate action returns saved result without executing
+PASS pending action is never automatically re-executed
+PASS idempotency survives a security-module restart
+PASS kick requires current player session
+PASS kick executes without arbitrary console command
+PASS recycled player ID gets a different session
+PASS resource actions disabled by default
+PASS resource must be allowlisted
+PASS monitor remains protected even if allowlisted
+PASS bridge cannot stop itself
+PASS allowlisted resource restart succeeds
+PASS all 17 current txAdmin events registered
+PASS deprecated events off by default
+PASS client-originated txAdmin event rejected
+PASS untrusted resource event rejected
+PASS official ban fields captured and HWIDs redacted
+PASS console command payload is redacted
+PASS no-payload configChanged event accepted
+PASS adminAuth revoke all clears observed admins
+PASS event feed reports retention gaps
+PASS invalid cursor rejected
+PASS full router inventory has 58 entries
+PASS txAdmin host integration disabled by default
+PASS host status uses env token header, never query string
+PASS upstream HTTP 200 application error becomes error
+PASS experimental adapter disabled by default
+PASS internal adapter requires revision acknowledgement
+PASS authentication lifecycle routes blocked
+PASS private intercom never exposed
+PASS development routes never exposed
+PASS internal adapter needs per-route scope
+PASS internal route must be explicitly allowlisted
+PASS internal adapter needs authorized session
+PASS internal adapter forwards fixed route, session and CSRF
+PASS expired txAdmin session cannot look successful
+PASS internal GET body is rejected
+PASS path parameters bind to exact rule
+PASS unsafe URLs are rejected
+PASS webhook delivery is signed and uses no redirects
+PASS webhook transient failure queues retry
+PASS webhook permanent failure enters dead-letter queue
+PASS dead-letter retry retains immutable event ID
+PASS outbox capacity is bounded with explicit loss counter
+PASS timed-out native request remains in concurrency accounting
+PASS native request concurrency is bounded
+PASS custom publishers denied by default
+PASS authorized custom publisher uses custom namespace
+PASS read-only exports do not return references to mutable state
+PASS rate limiter denies excess requests
+PASS corrupt KVP is not silently erased
+Lua tests: 96 passed, 0 failed
+
+=== PHP WordPress / database doubles ===
+PASS PHP request signature matches independent Python fixture
+PASS PHP webhook signature matches independent Python fixture
+PASS all WordPress routes have explicit permissions callbacks
+PASS admin endpoint rejects non-administrator
+PASS admin endpoint accepts manage_options capability
+PASS public status requires explicit opt-in
+PASS public status accepts explicitly public server
+PASS valid signed webhook is accepted
+PASS webhook tampering fails authentication
+PASS unknown webhook server rejected
+PASS expired webhook signature rejected
+PASS oversized webhook rejected
+PASS first delivery stores inbox and invokes hook once
+PASS duplicate delivery does not rerun hooks
+PASS conflicting same event ID returns 409
+PASS database failure is retryable 503
+PASS event ID must match signed envelope
+PASS invalid JSON has explicit error
+PASS fractional event sequence rejected
+PASS public snapshot is an allowlist, not the raw event
+PASS late lower-sequence snapshot cannot roll status back
+PASS stale data is not reported as live
+PASS unknown server snapshot is unknown, not offline
+PASS inbox polling uses receipt cursor for out-of-order delivery
+PASS inbox invalid limit rejected
+PASS PHP client uses HTTPS, verifies TLS, disables redirects
+PASS client signature covers the exact relative path
+PASS client refuses untrusted HTTP base URL
+PASS client refuses arbitrary URL forwarding
+PASS client refuses path traversal
+PASS client refuses internal txAdmin proxy by default
+PASS client requires idempotency key for writes
+PASS empty native action body encoded as object
+PASS GET request bodies are disallowed
+PASS client rejects malformed upstream response
+PASS private shortcode emits nothing
+PASS public shortcode contains no shared secrets
+PHP tests: 37 passed, 0 failed
+
+=== Python protocol, schema and inventory contracts ===
+test_audit_current_and_deprecated (test_tools.ToolTests.test_audit_current_and_deprecated) ... ok
+test_audit_ignores_comments_and_parses_dev (test_tools.ToolTests.test_audit_ignores_comments_and_parses_dev) ... ok
+test_body_and_idempotency_bounds (test_tools.ToolTests.test_body_and_idempotency_bounds) ... ok
+test_body_mutation_changes_signature (test_tools.ToolTests.test_body_mutation_changes_signature) ... ok
+test_database_identity_columns_are_case_sensitive (test_tools.ToolTests.test_database_identity_columns_are_case_sensitive) ... ok
+test_event_inventory_complete (test_tools.ToolTests.test_event_inventory_complete) ... ok
+test_external_plaintext_disallowed (test_tools.ToolTests.test_external_plaintext_disallowed) ... ok
+test_https_path (test_tools.ToolTests.test_https_path) ... ok
+test_ipv6_loopback_opt_in (test_tools.ToolTests.test_ipv6_loopback_opt_in) ... ok
+test_local_plaintext_requires_opt_in (test_tools.ToolTests.test_local_plaintext_requires_opt_in) ... ok
+test_native_api_paths_match_spec (test_tools.ToolTests.test_native_api_paths_match_spec) ... ok
+test_openapi_all_operations_signed_and_writes_have_idempotency (test_tools.ToolTests.test_openapi_all_operations_signed_and_writes_have_idempotency) ... ok
+test_openapi_all_refs_resolve (test_tools.ToolTests.test_openapi_all_refs_resolve) ... ok
+test_python_matches_shared_protocol_fixture (test_tools.ToolTests.test_python_matches_shared_protocol_fixture) ... ok
+test_route_inventory_has_unique_ids_and_classifications (test_tools.ToolTests.test_route_inventory_has_unique_ids_and_classifications) ... ok
+test_sources_and_scope_documented (test_tools.ToolTests.test_sources_and_scope_documented) ... ok
+test_url_and_target_injection_rejected (test_tools.ToolTests.test_url_and_target_injection_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.002s
+
+OK
+
+=== Syntax checks ===
+No syntax errors detected in wordpress/txbridge-wordpress/uninstall.php
+No syntax errors detected in wordpress/txbridge-wordpress/txbridge-wordpress.php
+No syntax errors detected in wordpress/txbridge-wordpress/includes/class-txbridge-client.php
+No syntax errors detected in wordpress/txbridge-wordpress/includes/class-txbridge-signing.php
+No syntax errors detected in examples/wp-config.php
+No syntax errors detected in examples/wordpress-consumer.php
+Browser JavaScript syntax: passed
+Python syntax: passed

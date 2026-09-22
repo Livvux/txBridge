@@ -1,0 +1,16 @@
+{
+  "server": "main",
+  "key": "wordpress",
+  "secret": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "method": "POST",
+  "path": "/v1/actions/announce",
+  "timestamp": "1700000000",
+  "nonce": "0123456789abcdef0123456789abcdef",
+  "idempotency": "idempotency_protocol_vector_1",
+  "body": "{\"message\":\"Hello from WordPress — Grüße\"}",
+  "eventId": "main-123",
+  "webhookSecret": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "eventBody": "{\"version\":1,\"id\":\"main-123\",\"sequence\":123,\"serverId\":\"main\",\"type\":\"bridge.status\",\"emittedAt\":1700000000,\"data\":{\"players\":2,\"maxPlayers\":48}}",
+  "requestSignature": "372cc7372ccf8ffe2b139c5cba6ec5e08873270c4a674ac234c105bdb5bf9b23",
+  "webhookSignature": "f370f43d66478062b826c390ae926681a7dae4c65352f28b454f2593ebecd968"
+}

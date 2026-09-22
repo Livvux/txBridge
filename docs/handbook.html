@@ -1,0 +1,1580 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>txBridge 0.1.0 — Integration handbook</title><style>
+:root{--ink:#172435;--muted:#58687a;--line:#dce4eb;--accent:#116b77;--paper:#fff;--shade:#f4f7f9}*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}body{margin:0;color:var(--ink);background:var(--paper);font:16px/1.72 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}a{color:var(--accent);text-underline-offset:3px}header{padding:60px max(28px,calc((100vw - 1230px)/2));background:#122435;color:#fff;border-bottom:6px solid #35999e}header p{max-width:820px;color:#d5e3ed}header h1{font-size:clamp(36px,5vw,62px);line-height:1.08;letter-spacing:-.045em;margin:10px 0 20px}.kicker{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:650}.badge{display:inline-block;border:1px solid #58717f;border-radius:6px;padding:4px 10px;font-size:13px;margin-right:8px}.layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:48px;max-width:1290px;margin:auto;padding:40px 30px 80px}aside{position:sticky;top:24px;align-self:start;font-size:14px;border-right:1px solid var(--line);padding-right:20px}aside a{display:block;padding:7px 0;text-decoration:none}aside a:hover{text-decoration:underline}main{min-width:0;max-width:935px}section{padding:0 0 35px;margin-bottom:44px;border-bottom:1px solid var(--line)}section h1{font-size:31px;letter-spacing:-.035em;line-height:1.2}h2{font-size:23px;line-height:1.3;margin:36px 0 12px;letter-spacing:-.025em}h3{font-size:18px;margin-top:28px}p{margin:14px 0}li{margin:6px 0}pre{font:13px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;background:#132b3a;color:#e8f5f5;padding:18px 20px;border-radius:8px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}code{font:0.87em/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;background:var(--shade);padding:2px 5px;border-radius:3px;overflow-wrap:anywhere}pre code{background:none;padding:0;color:inherit;font-size:inherit}.table-wrap{overflow-x:auto;max-width:100%;margin:18px 0 25px}table{width:100%;border-collapse:collapse;font-size:13px;line-height:1.6}th{background:var(--shade);text-align:left;font-weight:650;padding:11px;border-bottom:2px solid var(--line);vertical-align:top}td{border-bottom:1px solid var(--line);padding:11px;vertical-align:top}td:first-child{font-weight:500}td code{word-break:normal;overflow-wrap:anywhere}blockquote{margin:18px 0;padding:4px 20px;border-left:4px solid var(--accent);background:var(--shade)}.back{font-size:12px;margin-top:35px}.note{background:var(--shade);border:1px solid var(--line);border-radius:8px;padding:16px 20px;font-size:14px}.note strong{display:block}footer{padding:25px 30px;text-align:center;border-top:1px solid var(--line);color:var(--muted);font-size:13px}@media(max-width:860px){.layout{grid-template-columns:1fr;gap:25px;padding:28px 20px}aside{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:0;gap:0 15px;padding:0 0 24px;border-bottom:1px solid var(--line)}header{padding:40px 24px}section h1{font-size:27px}}@media print{aside,.back{display:none}.layout{display:block;max-width:none;padding:0}header{background:#fff;color:#172435;padding:20px 0}header p{color:#172435}section{break-before:page}a{color:inherit}pre{background:#f4f7f9;color:#172435}.table-wrap{overflow:visible}body{font-size:10pt}h2,h3{break-after:avoid}}
+</style></head><body id="top"><header><div class="kicker">FiveM · txAdmin · application integration</div><h1>txBridge<br>Integration handbook</h1><p>Server-only Lua resource, signed application API, persistent event delivery, and a WordPress receiver. Includes the complete pinned router inventory and explicit compatibility limits.</p><span class="badge">Version 0.1.0</span><span class="badge">Reviewed 22 September 2026</span><span class="badge">Staging acceptance required</span></header><div class="layout"><aside aria-label="Contents"><a href="#overview">01 &nbsp; Overview</a><a href="#installation">02 &nbsp; Installation</a><a href="#api">03 &nbsp; HTTP API</a><a href="#authentication">04 &nbsp; Signing protocol</a><a href="#events">05 &nbsp; Event reference</a><a href="#txadmin">06 &nbsp; txAdmin coverage</a><a href="#wordpress">07 &nbsp; WordPress</a><a href="#functions">08 &nbsp; Functions &amp; modules</a><a href="#security">09 &nbsp; Security &amp; operations</a><a href="#testing">10 &nbsp; Tests &amp; acceptance</a><a href="#sources">11 &nbsp; Source review</a></aside><main><div class="note"><strong>Implementation supplied. Live deployment not verified.</strong>The package includes source code and passing local tests. FiveM/WordPress runtime acceptance, actual credentials, TLS and your hosting configuration remain deployment tasks. Internal txAdmin routes are experimental, not a stable public API.</div><section id="overview"><h1>txBridge · FiveM ↔ applications</h1>
+<p><strong>Version 0.1.0 — implementation and integration-test candidate.</strong> Server-only Lua resource, WordPress plugin, signed HTTP client, OpenAPI specification, and deployment documentation. No paid dependency, framework dependency, RCON password, or monitor-token extraction is required for the normal integration.</p>
+<pre><code class="language-text">                     authenticated, scoped requests
+WordPress / your app ───────── HTTPS reverse proxy ────────┐
+                                                         ▼
+                                                  FiveM: txbridge
+WordPress webhook inbox ◀──── signed HTTPS events ────────┤
+                                                         ├─ FiveM server natives
+                                                         ├─ 17 documented txAdmin events
+                                                         ├─ optional host-status endpoint
+                                                         └─ optional internal web-session adapter
+</code></pre>
+<h2>What is included</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>Capability</th>
+  <th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Current documented txAdmin events</td>
+  <td>All 17 captured; three deprecated names optionally captured</td>
+</tr>
+<tr>
+  <td>Data API</td>
+  <td>Status, players, resources, event cursor, observed txAdmin state, private audit, queue monitoring</td>
+</tr>
+<tr>
+  <td>Controlled native actions</td>
+  <td>Announce, direct chat, kick, resource start/stop/restart; disabled until explicitly granted</td>
+</tr>
+<tr>
+  <td>Delivery</td>
+  <td>Persistent bounded outbox, signed webhooks, retries, dead letters, retry endpoint</td>
+</tr>
+<tr>
+  <td>WordPress</td>
+  <td>Signed durable inbox, protected application client, administrator endpoints, opt-in public shortcode</td>
+</tr>
+<tr>
+  <td>txAdmin HTTP inventory</td>
+  <td>All 58 registrations in the pinned central router, including two development-only registrations</td>
+</tr>
+<tr>
+  <td>Experimental adapter</td>
+  <td>42 internal route templates, disabled by default; explicit exact-parameter grants, per-route scopes and authorized session</td>
+</tr>
+<tr>
+  <td>Documentation</td>
+  <td>Installation, every bridge operation and export, event fields, all inventoried upstream routes, security, testing, OpenAPI</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>This is not a supported, universal txAdmin management API.</strong> The documented server events are observations, not commands. The internal panel routes are version-dependent. This package does not obtain private intercom credentials, spoof administrators, expose development routes, or automate txAdmin account/login flows. Events missed during downtime cannot reconstruct the complete txAdmin database. The Lua resource cannot operate while FXServer is stopped, including starting that stopped process.</p>
+<p>Upstream reviewed: <code>citizenfx/txAdmin</code>, commit <strong>8a9a41410000fd92a527fe11bae2b8eeeb8b10e0</strong>, on <strong>2026-09-22</strong>. The complete inventory is a snapshot of that router, not a claim that every private function, dynamic action, WebSocket message, binary download, or future route is implemented and tested.</p>
+<h2>Start here</h2>
+<ol>
+<li>Copy <code>resource/txbridge</code> into your FXServer <code>resources</code> directory. Merge <code>examples/server.cfg</code> before <code>ensure txbridge</code>, replacing all placeholders with independent secrets.</li>
+<li>Install the <code>wordpress/txbridge-wordpress</code> plugin, configure <code>examples/wp-config.php</code>, and use your WordPress HTTPS webhook URL.</li>
+<li>For requests from WordPress back to FiveM, configure the restricted HTTPS proxy in <code>deploy/nginx.conf.example</code>. Outbound-only event delivery does not need an inbound public API.</li>
+</ol>
+<p>Read <a href="#installation">Installation</a> before exposing any endpoint. For a public player-count widget, explicitly set <code>public_status</code> to <code>true</code>, then insert:</p>
+<pre><code class="language-text">[txbridge_status server=&quot;main&quot;]
+</code></pre>
+<h2>Documentation</h2>
+<p><a href="#installation">Installation</a> · <a href="#api">HTTP API</a> · <a href="#authentication">Authentication</a> · <a href="#events">Events</a> · <a href="#txadmin">txAdmin route coverage</a> · <a href="#wordpress">WordPress</a> · <a href="#functions">Functions and modules</a> · <a href="#security">Security and operations</a> · <a href="#testing">Tests and acceptance</a> · <a href="#sources">Sources</a></p>
+<p>A standalone reading copy is at <code>docs/handbook.html</code>. Machine-readable contracts are <code>docs/openapi.yaml</code>, <code>docs/openapi.json</code>, <code>docs/txadmin-routes.json</code>, and <code>docs/txadmin-events.json</code>.</p>
+<h2>Local tests</h2>
+<pre><code class="language-sh">python3 tests/run_lua.py
+php tests/test_wordpress.php
+python3 -m unittest discover -s tests -p 'test_*.py'
+node --check wordpress/txbridge-wordpress/assets/status.js
+</code></pre>
+<p>The Lua runner uses the actual Lua 5.4 shared library with mocked FiveM natives. PHP tests use WordPress/database doubles. <strong>Neither is a live FXServer, txAdmin, WordPress, MySQL, reverse-proxy, or load test.</strong> Complete the staging acceptance checklist before production use.</p>
+<h2>License</h2>
+<p>MIT. Independent integration; not an official Cfx.re, txAdmin, or WordPress product. No upstream txAdmin source distribution is included.</p>
+<p class="back"><a href="#top">Back to contents ↑</a></p></section><section id="installation"><h1>Installation and first connection</h1>
+<h2>1. Requirements and deployment choice</h2>
+<p>The resource targets the server-side FiveM Lua 5.4 runtime and uses the built-in JSON encoder, resource KVP persistence, HTTP natives, and documented server events. txAdmin must manage the running server for its events to arrive. No QBCore/ESX dependency is required. Native message/announcement actions specifically require the standard <code>chat</code> resource; custom chat frameworks need their own server integration.</p>
+<p>The WordPress plugin targets PHP 8.1+ and WordPress 6.0+ APIs. Those minimum versions describe the intended API baseline, not a certification across all versions or plugins. This package was checked with PHP 8.4.23 and test doubles, not a running WordPress installation. Activate separately per site; network-wide multisite provisioning is not implemented.</p>
+<p>Choose one of two deployments:</p>
+<p><strong>Outbound only:</strong> FiveM sends signed events/status snapshots to WordPress. Set <code>Config.Http.enabled = false</code> when you do not need remote reads or actions. No inbound txBridge proxy or txAdmin credentials are needed. WordPress can display the stored player-count snapshot.</p>
+<p><strong>Bidirectional:</strong> Keep the resource HTTP API enabled behind a restricted TLS proxy. WordPress signs server-side API requests. The public website never receives an API secret.</p>
+<h2>2. Install the resource and configure secrets</h2>
+<p>Copy the folder so the manifest is at <code>resources/[local]/txbridge/fxmanifest.lua</code>. Keep the name <code>txbridge</code> when using the examples. Do not install the entire repository as one FiveM resource.</p>
+<p>Generate three independent secrets, running this command separately for each:</p>
+<pre><code class="language-sh">openssl rand -hex 32
+</code></pre>
+<p>Use one API secret, one webhook secret, and a separate pseudonym secret. The resulting 64 hexadecimal <strong>characters are the literal shared-secret string</strong>; do not decode them into bytes in your application.</p>
+<p>Merge this before <code>ensure txbridge</code> in <code>server.cfg</code>:</p>
+<pre><code class="language-cfg">set txbridge_server_id &quot;main&quot;
+set txbridge_wordpress_secret &quot;YOUR_GENERATED_API_SECRET&quot;
+set txbridge_webhook_secret &quot;YOUR_GENERATED_WEBHOOK_SECRET&quot;
+set txbridge_privacy_secret &quot;YOUR_GENERATED_PSEUDONYM_SECRET&quot;
+set txbridge_webhook_url &quot;https://www.example.com/wp-json/txbridge/v1/webhook&quot;
+ensure txbridge
+</code></pre>
+<p>Replace every placeholder; they are intentionally rejected as credentials in the supplied examples. Use <strong><code>set</code></strong>, never the public/server-info <code>sets</code> or replicated <code>setr</code> variants, for secrets. Restrict filesystem access and do not commit the actual configuration. The pseudonym secret is never needed in WordPress.</p>
+<p><code>serverId</code> must be unique per actual server, contain only letters/digits/underscore/hyphen, and be 1–64 characters. Preserve KVP storage across ordinary restarts. When cloning a server, wiping persistence, or restoring an old sequence counter, provision a new server ID and reconcile consumers. Reusing an old ID/counter can collide with events already stored in WordPress.</p>
+<p>Run the local console command <code>txbridge_status</code> after starting. It reports sequence/queue counts, never credentials. Missing API client secrets prevent that client from authenticating. An invalid configured webhook URL or secret causes initialization to fail instead of silently sending unprotected data.</p>
+<h2>3. Install WordPress</h2>
+<p>Upload <code>txbridge-wordpress-0.1.0.zip</code> through Plugins → Add New → Upload Plugin, or copy <code>wordpress/txbridge-wordpress</code> into <code>wp-content/plugins</code>. Activate it. Activation creates the prefixed <code>txbridge_events</code> table and schedules daily retention cleanup.</p>
+<p>Add the following to <code>wp-config.php</code> before the final stop-editing comment, inside its existing PHP block:</p>
+<pre><code class="language-php">define('TXBRIDGE_SERVERS', [
+    'main' =&gt; [
+        'url' =&gt; 'https://bridge.example.com/txbridge',
+        'key_id' =&gt; 'wordpress',
+        'secret' =&gt; 'YOUR_GENERATED_API_SECRET',
+        'webhook_secret' =&gt; 'YOUR_GENERATED_WEBHOOK_SECRET',
+        'public_status' =&gt; false,
+        'label' =&gt; 'My Roleplay Server',
+    ],
+]);
+define('TXBRIDGE_ALLOW_INTERNAL_PROXY', false);
+define('TXBRIDGE_RETENTION_DAYS', 30);
+define('TXBRIDGE_DELETE_DATA_ON_UNINSTALL', false);
+</code></pre>
+<p>The array key <code>main</code> must equal FiveM's <code>txbridge_server_id</code>. <code>key_id</code> must match <code>Config.Clients.wordpress</code>. The webhook signing secret must match on both sides. The URL is the <strong>bridge</strong> base, including <code>/txbridge</code>; it is not the txAdmin panel URL. With outbound-only delivery, the client base is unused until you call a private bridge request.</p>
+<p>Use the canonical HTTPS webhook URL directly, without a redirect from another domain or trailing-slash rewrite. Keep the endpoint reachable by server-to-server POST requests; do not put a browser challenge or interactive login in front of it. Requests without a valid signature must still fail.</p>
+<p>Within a snapshot interval, Tools → txBridge should show a recent observation. Default snapshots are emitted at startup and every 30 seconds. A stale snapshot means telemetry is unavailable, not proof that FXServer is stopped.</p>
+<h2>4. Add a public widget deliberately</h2>
+<p>Set the relevant server's <code>public_status</code> to <code>true</code>, then add this shortcode to a WordPress page:</p>
+<pre><code class="language-text">[txbridge_status server=&quot;main&quot;]
+</code></pre>
+<p>Only label, server ID, player count, capacity, freshness, and observation time become public. Names, identifiers, moderation actions, audit entries, and raw txAdmin results remain private. The browser polls the limited WordPress status endpoint, not the FiveM private API.</p>
+<h2>5. Configure inbound HTTPS for the private API</h2>
+<p>The resource's route is on FXServer's HTTP listener:</p>
+<pre><code class="language-text">http://127.0.0.1:30120/txbridge/v1/status
+</code></pre>
+<p>Use your actual port. Copy and adapt <code>deploy/nginx.conf.example</code>. The example permits only the application's configured egress IP, terminates TLS, and forwards only <code>/txbridge/</code> to the local FXServer HTTP listener. It intentionally does not proxy the txAdmin panel.</p>
+<p>Keep <code>Config.Http.allowedPeers</code> limited to the actual proxy socket address. Local Nginx uses <code>127.0.0.1</code>/<code>::1</code>; a container or other host usually has a different private source address. Add that precise trusted address, not <code>0.0.0.0</code>, a browser IP, or an <code>X-Forwarded-For</code> value. txBridge ignores forwarded-IP headers. Changing this table requires restarting the resource.</p>
+<p>The <code>proxy_pass</code> example has <strong>no trailing slash</strong> so <code>/txbridge/</code> reaches FXServer. FiveM then supplies the resource-relative <code>/v1/...</code> target to Lua. Do not rewrite the URI to a different spelling, reorder query arguments, or drop signature headers.</p>
+<p>Test your real proxy configuration before reloading it. Your game TCP/UDP ports may remain publicly accessible for players; txBridge's own peer allowlist must still reject direct calls that bypass the proxy. Restrict port 40120/txAdmin separately with a firewall/private network. An HTTPS proxy alone does not secure an otherwise reachable admin panel.</p>
+<h2>6. Make the first authenticated read</h2>
+<p>From the application host or approved proxy peer:</p>
+<pre><code class="language-sh">export TXBRIDGE_URL='https://bridge.example.com/txbridge'
+export TXBRIDGE_SERVER='main'
+export TXBRIDGE_KEY='wordpress'
+# Enter the existing API secret without placing it in shell history:
+read -rs TXBRIDGE_SECRET; export TXBRIDGE_SECRET; printf '\n'
+python3 tools/txbridge_cli.py GET /v1/status
+python3 tools/txbridge_cli.py GET /v1/capabilities
+</code></pre>
+<p>The CLI requires Python 3.10+ and only the standard library. It refuses redirects. For a test run on the FXServer host only, you may explicitly use <code>--url http://127.0.0.1:30120/txbridge --allow-loopback-http</code>. Do not use public plaintext HTTP.</p>
+<p>A successful response has <code>ok: true</code>. An unsigned request should fail; that is expected, including for <code>/v1/health</code>. Synchronize both system clocks before diagnosing signature failures.</p>
+<h2>7. Enable a narrowly scoped action</h2>
+<p>For native private chat, enable <code>Config.Actions.message = true</code> and <code>Config.Clients.wordpress.scopes['actions:message'] = true</code>; restart the resource. The <code>chat</code> resource must be started.</p>
+<p>Read <code>/v1/players</code>, then copy the intended player's current <code>sessionId</code> into <code>examples/native-message.json</code>. Send:</p>
+<pre><code class="language-sh">python3 tools/txbridge_cli.py POST /v1/players/12/actions/message \
+  --body-file examples/native-message.json \
+  --idempotency-key message_demo_20260922_001
+</code></pre>
+<p>Use the actual player ID, not 12 blindly. Retrying the same operation uses the same body and idempotency key, but a fresh signature/nonce; the CLI generates those. A new intentional operation needs a different idempotency key. A disconnected/reused player ID will be rejected if the session ID changed.</p>
+<h2>8. Optional host status</h2>
+<p>Configure a fourth independent secret as <code>TXHOST_API_TOKEN</code> in the environment of the <strong>txAdmin process</strong>. Set its matching value in <code>txbridge_txadmin_host_token</code>, enable <code>Config.TxAdmin.hostStatusEnabled</code>, and grant <code>txadmin:host</code> to the API client. Restart the appropriate processes to load those settings. Call <code>/v1/txadmin/host/status</code>.</p>
+<p>Use the <code>x-txadmin-envtoken</code> header (the bridge does this), not a URL token. Do not set the upstream token to <code>disabled</code>. Leave the internal session adapter off unless you have read its separate compatibility and risk section.</p>
+<h2>9. Staging acceptance before production</h2>
+<p>Complete <a href="#testing">Testing and acceptance</a>: signed reads, forbidden direct peers, txAdmin event delivery, stale status, resource restarts, retry/deduplication, KVP persistence, storage errors, permissions, and one explicitly approved action. This package has not been deployed to your server or linked to your real WordPress site.</p>
+<p class="back"><a href="#top">Back to contents ↑</a></p></section><section id="api"><h1>Lua HTTP API</h1>
+<p>External base: <code>https://bridge.example.com/txbridge</code>. Resource-relative paths below are used in signatures. Every route requires HMAC authentication, actual-peer permission, and its listed scope. Every POST also requires an idempotency key. Configuration flags and upstream permissions are additional restrictions, not replacements for scope checks.</p>
+<h2>Read operations</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>Method and path</th>
+  <th>Scope</th>
+  <th>Response data / behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>GET /v1/health</code></td>
+  <td><code>status:read</code></td>
+  <td><code>healthy</code>, <code>serverId</code>; still private/authenticated</td>
+</tr>
+<tr>
+  <td><code>GET /v1/status</code></td>
+  <td><code>status:read</code></td>
+  <td>Current player count, capacity, hostname, resource uptime, monitor state, queue metrics</td>
+</tr>
+<tr>
+  <td><code>GET /v1/capabilities</code></td>
+  <td><code>status:read</code></td>
+  <td>Event names, feature flags, privacy flags and explicit guarantee limitations</td>
+</tr>
+<tr>
+  <td><code>GET /v1/players</code></td>
+  <td><code>players:read</code></td>
+  <td><code>items[]</code>: numeric <code>id</code>, <code>sessionId</code>, privacy-filtered <code>name</code>, <code>ping</code></td>
+</tr>
+<tr>
+  <td><code>GET /v1/players/{id}/identifiers</code></td>
+  <td><code>players:identifiers</code></td>
+  <td>Requires <code>Privacy.exposeIdentifiers</code>; only configured identifier types, never IP</td>
+</tr>
+<tr>
+  <td><code>GET /v1/resources</code></td>
+  <td><code>resources:read</code></td>
+  <td><code>items[]</code>: resource <code>name</code> and runtime <code>state</code></td>
+</tr>
+<tr>
+  <td><code>GET /v1/events?after=0&amp;limit=50</code></td>
+  <td><code>events:read</code></td>
+  <td>Bounded source-sequence feed and gap indicator; never a complete database</td>
+</tr>
+<tr>
+  <td><code>GET /v1/audit</code></td>
+  <td><code>audit:read</code></td>
+  <td>Private bounded local action audit; <code>tamperProof: false</code></td>
+</tr>
+<tr>
+  <td><code>GET /v1/webhooks</code></td>
+  <td><code>webhooks:read</code></td>
+  <td>Queue/endpoint operational metadata, no configured URLs or secrets</td>
+</tr>
+<tr>
+  <td><code>GET /v1/webhooks/dead-letters</code></td>
+  <td><code>webhooks:read</code></td>
+  <td>Failed-delivery metadata; no raw payloads</td>
+</tr>
+<tr>
+  <td><code>GET /v1/txadmin/state</code></td>
+  <td><code>events:read</code></td>
+  <td>Only state observed since this resource started; <code>authoritative: false</code></td>
+</tr>
+<tr>
+  <td><code>GET /v1/txadmin/routes</code></td>
+  <td><code>status:read</code></td>
+  <td>58-route inventory and adapter metadata, not an authorization grant</td>
+</tr>
+<tr>
+  <td><code>GET /v1/txadmin/host/status</code></td>
+  <td><code>txadmin:host</code></td>
+  <td>Optional upstream <code>/host/status</code>, requiring its separately configured token</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>bridgeUptimeSeconds</code> means uptime of this resource instance, not host/FXServer/txAdmin process uptime. <code>processState: running</code> only means the current request is being served by the running game process. CPU, total host memory and historical player playtime are not fabricated from these native reads.</p>
+<p>The native player list exposes connection-local player IDs, not persistent accounts. Names are <code>[redacted]</code> by default. The raw-identifier endpoint is an explicit privacy exception; it does not contain txAdmin's offline player database or hardware tokens.</p>
+<h2>Native and transport actions</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>Method and path</th>
+  <th>Scope</th>
+  <th>JSON body</th>
+  <th>Required configuration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>POST /v1/actions/announce</code></td>
+  <td><code>actions:announce</code></td>
+  <td><code>{&quot;message&quot;:&quot;...&quot;}</code></td>
+  <td><code>Actions.announce</code>, started <code>chat</code></td>
+</tr>
+<tr>
+  <td><code>POST /v1/players/{id}/actions/message</code></td>
+  <td><code>actions:message</code></td>
+  <td><code>{&quot;sessionId&quot;:&quot;...&quot;,&quot;message&quot;:&quot;...&quot;}</code></td>
+  <td><code>Actions.message</code>, started <code>chat</code></td>
+</tr>
+<tr>
+  <td><code>POST /v1/players/{id}/actions/kick</code></td>
+  <td><code>actions:kick</code></td>
+  <td><code>{&quot;sessionId&quot;:&quot;...&quot;,&quot;reason&quot;:&quot;...&quot;}</code></td>
+  <td><code>Actions.kick</code></td>
+</tr>
+<tr>
+  <td><code>POST /v1/resources/{name}/actions/start</code></td>
+  <td><code>actions:resource</code></td>
+  <td><code>{}</code></td>
+  <td><code>Actions.resources</code> and exact resource allowlist</td>
+</tr>
+<tr>
+  <td><code>POST /v1/resources/{name}/actions/stop</code></td>
+  <td><code>actions:resource</code></td>
+  <td><code>{}</code></td>
+  <td>Same; protected resources rejected</td>
+</tr>
+<tr>
+  <td><code>POST /v1/resources/{name}/actions/restart</code></td>
+  <td><code>actions:resource</code></td>
+  <td><code>{}</code></td>
+  <td>Same; partial transitions reported</td>
+</tr>
+<tr>
+  <td><code>POST /v1/webhooks/retry</code></td>
+  <td><code>webhooks:write</code></td>
+  <td><code>{&quot;deliveryId&quot;:&quot;...&quot;}</code></td>
+  <td>Existing retained dead letter and configured endpoint</td>
+</tr>
+<tr>
+  <td><code>POST /v1/txadmin/request</code></td>
+  <td><code>txadmin:&lt;routeId&gt;</code></td>
+  <td>Named route request described below</td>
+  <td>Experimental adapter, exact rule, pinned revision acknowledgement, session</td>
+</tr>
+</tbody>
+</table></div>
+<p>Messages/announcements must be 1–512 bytes and contain visible text; kick reasons are 1–256 bytes. Control characters/newlines are rejected. Unknown body fields are rejected. Player actions require the exact current <code>sessionId</code> obtained from <code>/v1/players</code>, so a reused net ID is not sufficient authorization to affect a replacement player.</p>
+<p>Native messages use <code>chat:addMessage</code>; native kicks use <code>DropPlayer</code>. They return <code>txAdminAction: false</code> and do <strong>not</strong> create txAdmin warnings, bans, allowlist entries or admin-history records. An emitted <code>bridge.playerKicked</code> observation is not a txAdmin database action. A chat send response is not a client-render acknowledgment.</p>
+<p>Only resource names made of letters/digits/underscore/hyphen are accepted. <code>monitor</code>, the bridge itself, and the configured protected-resource set cannot be controlled. Restart is a stop/start transition, so an error can leave a resource stopped; inspect the returned result. There is no general arbitrary <code>ExecuteCommand</code> or RCON endpoint in the native API.</p>
+<h2>Event cursor response</h2>
+<pre><code class="language-json">{
+  &quot;ok&quot;: true,
+  &quot;data&quot;: {
+    &quot;items&quot;: [],
+    &quot;cursor&quot;: 120,
+    &quot;latest&quot;: 120,
+    &quot;oldestAvailable&quot;: 1,
+    &quot;gap&quot;: false,
+    &quot;authoritative&quot;: false
+  }
+}
+</code></pre>
+<p>The values above are illustrative. <code>after</code> is a nonnegative source event sequence not greater than the current sequence. <code>limit</code> is 1–100. Store the returned cursor after processing a page. When <code>gap</code> is true, retained history no longer reaches the requested cursor: alert/reconcile instead of assuming nothing happened. <code>GET /v1/txadmin/state</code> and cursor replay cannot recover txAdmin changes made while the resource was offline.</p>
+<p>Do not confuse this origin-sequence cursor with WordPress's <strong>receipt-ID cursor</strong>, which handles out-of-order webhook arrival.</p>
+<h2>Experimental request wrapper</h2>
+<pre><code class="language-json">{
+  &quot;route&quot;: &quot;player_stats&quot;,
+  &quot;params&quot;: {},
+  &quot;query&quot;: {}
+}
+</code></pre>
+<p>The bridge resolves method and path from the audited catalog. Optional <code>body</code> is supplied only for upstream POST routes. <code>params</code> must exactly match a locally configured rule; it is not a wildcard. Query keys/values are bounded and scalar; they are deterministically percent-encoded upstream. The caller cannot choose a destination host, authentication header, or arbitrary URI.</p>
+<p>Upstream JSON is returned inside <code>data.upstream</code>; it is not converted into a stable schema. HTML/log responses are returned as inert <code>data.text</code> with <code>interpretation: unverified_text</code>, not rendered or considered a verified successful business action. See the upstream coverage reference before enabling this facility.</p>
+<h2>Response envelopes and errors</h2>
+<pre><code class="language-json">{&quot;ok&quot;:true,&quot;data&quot;:{&quot;serverId&quot;:&quot;main&quot;,&quot;players&quot;:12,&quot;maxPlayers&quot;:48}}
+</code></pre>
+<pre><code class="language-json">{&quot;ok&quot;:false,&quot;error&quot;:{&quot;code&quot;:&quot;forbidden&quot;,&quot;message&quot;:&quot;...&quot;}}
+</code></pre>
+<p>The success example is abbreviated. Consumers should check HTTP status <strong>and</strong> <code>ok</code>, not merely whether JSON was returned. Typical errors:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>HTTP status</th>
+  <th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>400</td>
+  <td>Invalid JSON, shape, target, cursor, length or input</td>
+</tr>
+<tr>
+  <td>401</td>
+  <td>Missing/invalid signature or stale timestamp</td>
+</tr>
+<tr>
+  <td>403</td>
+  <td>Peer/scope forbidden, disabled feature, protected resource, blocked upstream route</td>
+</tr>
+<tr>
+  <td>404 / 405</td>
+  <td>Unknown route/player/resource or unsupported HTTP method</td>
+</tr>
+<tr>
+  <td>408 / 413 / 415</td>
+  <td>Body timeout, body too large or wrong content type</td>
+</tr>
+<tr>
+  <td>409</td>
+  <td>Replayed nonce, idempotency conflict/pending/uncached response, player session changed, unavailable chat, partial resource failure</td>
+</tr>
+<tr>
+  <td>429</td>
+  <td>Request rate limit; inspect the actual error code</td>
+</tr>
+<tr>
+  <td>500 / 503</td>
+  <td>Local error, configuration/storage fault, replay/idempotency/HTTP capacity or missing integration configuration</td>
+</tr>
+<tr>
+  <td>502 / 504</td>
+  <td>Upstream rejection/application failure, transport failure or timeout; an action may already have occurred</td>
+</tr>
+</tbody>
+</table></div>
+<p>Errors do not expose Lua stack traces or request secrets. Internal txAdmin error objects are privileged upstream data and can contain personal/operational information. No-store/nosniff headers are used on ordinary API responses. The machine-readable OpenAPI files document all 21 concrete method/path operations; they do not pretend that the internal upstream contracts are stable.</p>
+<p class="back"><a href="#top">Back to contents ↑</a></p></section><section id="authentication"><h1>Authentication and request protocol</h1>
+<h2>Trust boundaries</h2>
+<p>All Lua endpoints, including health/capability reads, require a client key ID and HMAC signature. Each client has an independent secret and scopes. HMAC authenticates the request body and target; it does not encrypt them. Use HTTPS from the application to the proxy and a trusted private/loopback hop to FXServer. The Lua API additionally restricts actual socket peers. No browser CORS access is provided to this private API.</p>
+<p>A WordPress public status endpoint is a separate, explicitly enabled projection. WordPress administrator endpoints use WordPress authentication and <code>manage_options</code>; do not replace that with an always-true permission callback. Standard WordPress cookie-authenticated REST calls also need WordPress's REST nonce.</p>
+<h2>Request headers</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>Header</th>
+  <th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>X-TxBridge-Key</code></td>
+  <td>Configured client ID, 1–64 ASCII letters, digits, <code>_</code>, <code>-</code></td>
+</tr>
+<tr>
+  <td><code>X-TxBridge-Timestamp</code></td>
+  <td>Decimal Unix time in seconds; server accepts ±90 seconds by default</td>
+</tr>
+<tr>
+  <td><code>X-TxBridge-Nonce</code></td>
+  <td>Fresh 24–128 character ASCII letter/digit/underscore/hyphen value</td>
+</tr>
+<tr>
+  <td><code>X-TxBridge-Signature</code></td>
+  <td>Lowercase hex HMAC-SHA256 of the canonical string</td>
+</tr>
+<tr>
+  <td><code>Idempotency-Key</code></td>
+  <td>Required for every POST; 16–128 characters using the same safe alphabet</td>
+</tr>
+<tr>
+  <td><code>Content-Type</code></td>
+  <td><code>application/json</code> for every POST</td>
+</tr>
+</tbody>
+</table></div>
+<p>Requests do not use cookies or query-string secrets. GET has no body. POST must contain a JSON object, even when empty (<code>{}</code>). UTF-8 body size is capped at 32 KiB. Sign the exact bytes actually sent; do not sign an object and serialize it differently afterwards.</p>
+<h2>Canonical request</h2>
+<p>Join these nine lines with a single LF (<code>\n</code>) and <strong>no trailing newline</strong>:</p>
+<pre><code class="language-text">TXBRIDGE1
+&lt;serverId&gt;
+&lt;keyId&gt;
+&lt;UPPERCASE_METHOD&gt;
+&lt;resource-relative path with exact raw query string&gt;
+&lt;timestamp&gt;
+&lt;nonce&gt;
+&lt;idempotency key, or an empty line for GET&gt;
+&lt;lowercase hex SHA256 of exact body bytes&gt;
+</code></pre>
+<p>Compute <code>hex(HMAC-SHA256(secret_utf8, canonical_utf8))</code>.</p>
+<p>The signed path is <code>/v1/status</code>, <strong>not</strong> <code>/txbridge/v1/status</code>. For <code>/v1/events?after=0&amp;limit=50</code>, preserve that complete target byte-for-byte, including query ordering and percent-encoding. The external URL combines your fixed base (<code>https://bridge.example.com/txbridge</code>) with that signed relative target.</p>
+<p>The timestamp, nonce and idempotency key are part of the signature. The nonce is checked against a bounded persistent replay cache. Expiry accounts for the accepted timestamp window, including slightly future-dated requests. A consumed nonce cannot be used again even when the action was rejected for missing scope.</p>
+<p><code>tests/protocol-vectors.json</code> contains fixed, non-secret test credentials and expected signatures. Its timestamp is intentionally historical and not usable as a live request. Python, Lua and PHP tests check the same fixture, including a Unicode message.</p>
+<h2>POST retries and idempotency</h2>
+<p>The bridge persists a pending record before dispatching a POST. A completed duplicate with the same client, idempotency key, method, path and exact body returns the recorded response instead of executing again. The retry must have a <strong>new nonce/signature</strong>. A different payload with the same key is rejected.</p>
+<p>Defaults: at most 512 retained records, 24-hour TTL, and cached response size up to 16 KiB. Capacity exhaustion is rejected rather than evicting active protection. Pending/ambiguous requests and oversized uncached responses are not automatically executed again. A completed cached response includes <code>X-TxBridge-Idempotent-Replay: true</code> when replayed.</p>
+<p>This is bounded deduplication, not end-to-end exactly-once processing. A process can die after an upstream action but before recording its response. txAdmin can save a ban and then report that in-game delivery failed. Timeout does not prove nonexecution. Reconcile actual state or ask an operator before issuing a replacement operation with a new key. Records do not protect a retry after expiry or loss of persistence.</p>
+<h2>Webhook signature</h2>
+<p>Webhook transport is a separate protocol using an independent secret per destination. Headers:</p>
+<pre><code class="language-text">X-TxBridge-Server: main
+X-TxBridge-Event: main-123
+X-TxBridge-Timestamp: &lt;current send-attempt time&gt;
+X-TxBridge-Signature: &lt;lowercase hex HMAC&gt;
+</code></pre>
+<p>Canonical string (five LF-separated lines, no trailing LF):</p>
+<pre><code class="language-text">TXBRIDGE-WEBHOOK1
+&lt;serverId&gt;
+&lt;eventId&gt;
+&lt;timestamp&gt;
+&lt;lowercase hex SHA256 of exact webhook body&gt;
+</code></pre>
+<p>Verify HMAC and timestamp <strong>before</strong> processing JSON. Compare signature bytes without early-exit string comparison. The supplied WordPress receiver then checks schema/IDs and stores the event with a unique <code>(server_id, event_id)</code> constraint and body digest. A duplicate with identical body is acknowledged; the same ID with changed contents is rejected.</p>
+<p>Each delivery attempt signs the same event body with a fresh timestamp. An older <code>emittedAt</code> is valid for a delayed queued event; freshness is based on the source timestamp, not receipt time. No request nonce is necessary for this webhook protocol because the persistent event ID/digest is the deduplication key. There is no signed response protocol; authenticated TLS protects the acknowledgment channel.</p>
+<h2>Secret rotation</h2>
+<p>API clients may be added under a second key ID for a staged rotation. Deploy the new client/secret, switch the application, verify, then remove the old grant. Webhook receivers currently accept one configured secret per server; coordinate sender/receiver rotation, monitor transient authentication failures, and explicitly retry dead letters after repair. Event bodies need not change. Rotating the pseudonym key changes identifier correlations and requires a privacy/consumer migration decision.</p>
+<p class="back"><a href="#top">Back to contents ↑</a></p></section><section id="events"><h1>Event reference and delivery</h1>
+<p>All 17 current documented txAdmin events are subscribed server-side using <code>AddEventHandler</code>, not <code>RegisterNetEvent</code>. The upstream prefix is <code>txAdmin:events:</code>. The external event type is <code>txadmin.&lt;sameName&gt;</code>. These notifications do not grant an application the ability to perform the original txAdmin action.</p>
+<h2>Current upstream events</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>Upstream name after prefix</th>
+  <th>Documented payload fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>announcement</code></td>
+  <td><code>author</code>, <code>message</code></td>
+</tr>
+<tr>
+  <td><code>serverShuttingDown</code></td>
+  <td><code>delay</code>, <code>author</code>, <code>message</code></td>
+</tr>
+<tr>
+  <td><code>scheduledRestart</code></td>
+  <td><code>secondsRemaining</code>, <code>translatedMessage</code></td>
+</tr>
+<tr>
+  <td><code>scheduledRestartSkipped</code></td>
+  <td><code>secondsRemaining</code>, <code>temporary</code>, <code>author</code></td>
+</tr>
+<tr>
+  <td><code>playerBanned</code></td>
+  <td><code>author</code>, <code>reason</code>, <code>actionId</code>, <code>expiration</code>, <code>durationInput</code>, <code>durationTranslated</code>, <code>targetNetId</code>, <code>targetIds</code>, <code>targetHwids</code>, <code>targetName</code>, <code>kickMessage</code></td>
+</tr>
+<tr>
+  <td><code>playerDirectMessage</code></td>
+  <td><code>target</code>, <code>author</code>, <code>message</code></td>
+</tr>
+<tr>
+  <td><code>playerHealed</code></td>
+  <td><code>target</code>, <code>author</code></td>
+</tr>
+<tr>
+  <td><code>playerKicked</code></td>
+  <td><code>target</code>, <code>author</code>, <code>reason</code>, <code>dropMessage</code></td>
+</tr>
+<tr>
+  <td><code>playerWarned</code></td>
+  <td><code>author</code>, <code>reason</code>, <code>actionId</code>, <code>targetNetId</code>, <code>targetIds</code>, <code>targetName</code></td>
+</tr>
+<tr>
+  <td><code>whitelistPlayer</code></td>
+  <td><code>action</code>, <code>license</code>, <code>playerName</code>, <code>adminName</code></td>
+</tr>
+<tr>
+  <td><code>whitelistPreApproval</code></td>
+  <td><code>action</code>, <code>identifier</code>, <code>playerName</code>, <code>adminName</code></td>
+</tr>
+<tr>
+  <td><code>whitelistRequest</code></td>
+  <td><code>action</code>, <code>playerName</code>, <code>requestId</code>, <code>license</code>, <code>adminName</code></td>
+</tr>
+<tr>
+  <td><code>actionRevoked</code></td>
+  <td><code>actionId</code>, <code>actionType</code>, <code>actionReason</code>, <code>actionAuthor</code>, <code>playerName</code>, <code>playerIds</code>, <code>playerHwids</code>, <code>revokedBy</code></td>
+</tr>
+<tr>
+  <td><code>adminAuth</code></td>
+  <td><code>netid</code>, <code>isAdmin</code>, <code>username</code></td>
+</tr>
+<tr>
+  <td><code>adminsUpdated</code></td>
+  <td>Array of online admin net IDs</td>
+</tr>
+<tr>
+  <td><code>configChanged</code></td>
+  <td>No payload</td>
+</tr>
+<tr>
+  <td><code>consoleCommand</code></td>
+  <td><code>author</code>, <code>channel</code>, <code>command</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Only these selected documented keys are forwarded from current events; unknown new keys do not silently leak into external applications. The table lists the original schema, <strong>not a promise of unredacted values</strong>. Null/optional values may be omitted by the Lua JSON conversion.</p>
+<p><code>expiration: false</code> means a permanent ban. Player ban/warn notifications may refer to offline identifiers rather than a live net ID. <code>playerHealed.target</code> and <code>playerKicked.target</code> can be <code>-1</code> for everyone. <code>adminAuth.netid = -1</code> revokes the observed admin set. Never interpret those values as normal connected-player IDs.</p>
+<p>Allowlist-related action variants are <code>added</code>/<code>removed</code> for <code>whitelistPlayer</code> and <code>whitelistPreApproval</code>, and <code>requested</code>/<code>approved</code>/<code>denied</code>/<code>deniedAll</code> for <code>whitelistRequest</code>. Optional names, request IDs and licenses are not present for every variant. The event named <code>whitelistPlayer</code> does not cover all preapproval/request transitions: all three families are captured.</p>
+<p>Deprecated names, off by default: <code>playerWhitelisted</code>, <code>healedPlayer</code>, <code>skippedNextScheduledRestart</code>. <code>Config.Events.captureDeprecated = true</code> enables them for older installations. They retain their original names; modern aliases can produce duplicate observations. This option is not a full historical-schema compatibility layer.</p>
+<h2>Privacy defaults</h2>
+<p>Player/admin names, messages/reasons, and console-command text are redacted by default. Identifier fields become keyed HMAC pseudonyms when a separate privacy secret is configured; without it they are <code>[redacted]</code>. Hardware-token fields and explicitly prohibited credential/IP fields remain redacted. Pseudonyms are still linkable data, not guaranteed anonymous data.</p>
+<p>Enable individual <code>Config.Privacy</code> fields only after deciding who needs those data and for how long. Redaction happens before normal event persistence/delivery. Oversized payloads are replaced by a truncation marker; deep objects and long strings/collections are bounded. Custom publishers are trusted code: arbitrary secret-bearing property names cannot be recognized by a generic sanitizer. Do not publish secrets or raw sensitive data at all.</p>
+<p>The experimental upstream API does <strong>not</strong> use event redaction. Its privileged responses may contain full txAdmin records; isolate it from public UI and low-trust clients.</p>
+<h2>Event envelope</h2>
+<pre><code class="language-json">{
+  &quot;version&quot;: 1,
+  &quot;id&quot;: &quot;main-123&quot;,
+  &quot;sequence&quot;: 123,
+  &quot;serverId&quot;: &quot;main&quot;,
+  &quot;type&quot;: &quot;txadmin.scheduledRestart&quot;,
+  &quot;origin&quot;: &quot;txadmin_event&quot;,
+  &quot;emittedAt&quot;: 1780000000,
+  &quot;data&quot;: {
+    &quot;secondsRemaining&quot;: 60,
+    &quot;translatedMessage&quot;: &quot;[redacted]&quot;
+  }
+}
+</code></pre>
+<p>Timestamps are Unix seconds. The example time is illustrative, not a current request timestamp. <code>sequence</code> is monotonic within the persisted server identity. <code>origin</code> distinguishes a txAdmin notification, a FiveM event, the bridge itself, or an approved local publisher. Consumers should preserve and deduplicate by <code>(serverId,id)</code>.</p>
+<p>Additional implemented types:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>Family</th>
+  <th>Types</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>FiveM observations</td>
+  <td><code>fivem.playerJoined</code>, <code>fivem.playerDropped</code>, <code>fivem.resourceStarted</code>, <code>fivem.resourceStopped</code></td>
+</tr>
+<tr>
+  <td>Bridge telemetry/actions</td>
+  <td><code>bridge.started</code>, <code>bridge.status</code>, <code>bridge.announcement</code>, <code>bridge.playerKicked</code>, <code>bridge.playerMessaged</code>, <code>bridge.resourceAction</code></td>
+</tr>
+<tr>
+  <td>Trusted extension publisher</td>
+  <td><code>custom.&lt;name&gt;</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Resource stop/shutdown events are best-effort observations, not a guarantee that an HTTP webhook reaches WordPress before the process exits. Retained outbox items can be delivered on a later restart, subject to configured limits.</p>
+<h2>Delivery policy</h2>
+<p>The default snapshot interval is 30 seconds. Normal events and an outbox share a bounded local KVP journal. One outbound attempt per destination is active at a time; other eligible items can overtake a failed/backed-off item. Each body is stable across retries, but timestamps/signatures are refreshed. Use source sequence for state comparisons, and receipt cursors to process every arriving message.</p>
+<p>Defaults: 500 queued deliveries, 100 retained dead letters, eight attempts, 24-hour queued age, ten-second request timeout, at most four outstanding native HTTP requests, exponential backoff capped at five minutes. Transient HTTP 408/429/5xx and transport failures are retried. Most other 4xx responses become dead letters immediately. No redirect is followed. An HTTP 2xx acknowledgment means the destination accepted the delivery; arbitrary application hooks might still fail later.</p>
+<p>Monitor <code>/v1/webhooks</code>, <code>/v1/webhooks/dead-letters</code> and <code>/v1/status</code>. After repairing an endpoint, use <code>/v1/webhooks/retry</code> with its retained <code>deliveryId</code>. Manual retry keeps the event ID/body but resets attempt and queue-age accounting. Queue/dead-letter overflow is counted; the storage is not unbounded and delivery is not guaranteed forever. Removing a destination or changing identity/retention requires an operational migration.</p>
+<p>There is no full initial import, no historical ban/allowlist reconciliation, no durable event emission from a stopped FXServer, and no automatic replay from txAdmin's database. The observed admin/restart state starts incomplete each resource boot. A separate, authorized reconciliation service would be needed for authoritative offline state.</p>
+<p class="back"><a href="#top">Back to contents ↑</a></p></section><section id="txadmin"><h1>txAdmin integration and complete router inventory</h1>
+<h2>Three distinct integration surfaces</h2>
+<p><strong>Documented notifications:</strong> the 17 current server events are captured through FiveM. This is the normal, credential-free txAdmin integration. They are not callable administration functions, and they can be missed when the game process/resource is offline.</p>
+<p><strong>Host status:</strong> <code>/host/status</code> is a separate host-facing route using <code>TXHOST_API_TOKEN</code> and <code>x-txadmin-envtoken</code>. txBridge implements a private scoped read adapter. It does not assume that this token authorizes player actions or the panel's other routes. The upstream handler returns <code>txManager.hostStatus</code>; its object is passed through rather than replaced with an invented universal schema.</p>
+<p><strong>Internal panel routes:</strong> txAdmin's web application has its own session-authenticated routes. The pinned middleware checks the authorized admin session and, for web API requests, <code>x-txadmin-csrftoken</code>. They are not a stable third-party API contract. An opt-in bridge adapter can address 42 inventoried templates, subject to txAdmin permissions and per-route local configuration.</p>
+<h2>What “all endpoints” covers here</h2>
+<p>The inventory below includes <strong>all 58 HTTP registrations in <code>core/modules/WebServer/router.ts</code> at the audited commit</strong>, including two conditional development registrations. It is not all txAdmin source functions, static files/SPA middleware, WebSocket channels, every dynamic action's complete schema, or future additions. No claim is made that all 42 experimental templates have been exercised against a live txAdmin installation.</p>
+<p>Every inventoried route has a named classification:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>Classification</th>
+  <th style="text-align:right">Count</th>
+  <th>Treatment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Experimental panel route</td>
+  <td style="text-align:right">42</td>
+  <td>Generic named-route adapter, off by default</td>
+</tr>
+<tr>
+  <td>Authentication lifecycle</td>
+  <td style="text-align:right">11</td>
+  <td>Documented only; no account creation, login automation or credential-management bridge</td>
+</tr>
+<tr>
+  <td>Host status</td>
+  <td style="text-align:right">1</td>
+  <td>Separate token-authenticated read adapter</td>
+</tr>
+<tr>
+  <td>Private intercom</td>
+  <td style="text-align:right">2</td>
+  <td>Explicitly blocked; no extraction or reuse of monitor's private token</td>
+</tr>
+<tr>
+  <td>Development-only</td>
+  <td style="text-align:right">2</td>
+  <td>Explicitly blocked</td>
+</tr>
+</tbody>
+</table></div>
+<p>Browser-only/rendered routes are returned as inert text when enabled. Binary/streaming download workflows, browser redirects and interactive flows are not implemented. A route being in the catalog does not mean its every operation makes sense from a Lua resource. For example, a stop/restart request can kill the bridge before its response is delivered, and a stopped FXServer cannot receive a later start request through that resource.</p>
+<h2>Enabling one experimental read</h2>
+<p>First match your installed txAdmin to the audited source and review the exact handler, auth middleware, and permissions. The release is pinned to:</p>
+<pre><code class="language-text">8a9a41410000fd92a527fe11bae2b8eeeb8b10e0
+</code></pre>
+<p>Set the acknowledgement convar to that exact value only after that review; it is a human acknowledgement, <strong>not automatic detection of the installed build</strong>. The adapter does not become compatible merely because this string is configured.</p>
+<p>Create/use an authorized, least-privilege txAdmin admin account under your control. Obtain its current browser-session Cookie header and CSRF token from your own authenticated session. Store those only in private server configuration. This bridge deliberately does not collect passwords or automate login. Session invalidation/expiry will require operator renewal.</p>
+<p>Before <code>ensure txbridge</code>, add:</p>
+<pre><code class="language-cfg">set txbridge_txadmin_url &quot;http://127.0.0.1:40120&quot;
+set txbridge_txadmin_revision &quot;8a9a41410000fd92a527fe11bae2b8eeeb8b10e0&quot;
+set txbridge_txadmin_cookie &quot;YOUR_AUTHORIZED_SESSION_COOKIE_HEADER&quot;
+set txbridge_txadmin_csrf &quot;YOUR_AUTHORIZED_SESSION_CSRF_TOKEN&quot;
+</code></pre>
+<p>In <code>config.lua</code>, change only the required grants:</p>
+<pre><code class="language-lua">-- Merge into the existing configuration, not a second Config object.
+Config.TxAdmin.experimental = true
+Config.TxAdmin.rules = {
+    { route = 'player_stats', params = {} },
+}
+Config.Clients.wordpress.scopes['txadmin:player_stats'] = true
+</code></pre>
+<p>For WordPress-originated requests, additionally set <code>TXBRIDGE_ALLOW_INTERNAL_PROXY</code> to <code>true</code>. Restart the resource to reload Lua configuration. Send a signed POST to the bridge:</p>
+<pre><code class="language-sh">python3 tools/txbridge_cli.py POST /v1/txadmin/request \
+  --body-file examples/txadmin-player-stats.json \
+  --idempotency-key txadmin_stats_demo_20260922_001
+</code></pre>
+<p>Even though this wrapper calls an upstream GET, the wrapper is POST and therefore needs its own idempotency key. Do not reuse the example key for later intentional reads, or you may receive its retained result instead of a new one.</p>
+<h2>Exact parameter grants</h2>
+<p>A dynamic route grant must match the complete <code>params</code> object, not just the template. For example:</p>
+<pre><code class="language-lua">{ route = 'whitelist_list', params = { table = 'requests' } }
+</code></pre>
+<p>permits the upstream <code>/whitelist/requests</code> path, not <code>/whitelist/approvals</code>. The client also needs <code>txadmin:whitelist_list</code>. Query and JSON body remain caller inputs within transport limits; route grants are <strong>not field-level policy rules</strong>. In particular, giving a route access to arbitrary commands, settings, setup, master actions, deployment, bans or mass allowlist changes is very powerful even with a fixed action parameter. Use separate clients, minimum txAdmin permissions, and an application approval policy.</p>
+<p>No URL, Cookie, CSRF token, intercom token, or alternative destination host is accepted from an inbound request. Authentication lifecycle, intercom and development routes remain blocked regardless of configured grants.</p>
+<h2>Verified dynamic player/allowlist actions</h2>
+<p>The following action names and basic inputs were read in the pinned handlers. These are compatibility notes, not an exhaustive normalized schema or assurance that the current upstream will keep them unchanged.</p>
+<p><code>POST /player/:action</code> resolves a player using upstream query values <code>mutex</code>, <code>netid</code>, and/or <code>license</code>. The upstream handler supports <code>mutex=current</code>. Connection IDs can be reused; the native bridge's <code>sessionId</code> protection does not automatically extend to this generic internal adapter. Resolve the intended upstream player carefully and review the current resolver's identity semantics before destructive actions.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>Player action parameter</th>
+  <th>Basic JSON body</th>
+  <th>Upstream permission noted in handler</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>save_note</code></td>
+  <td><code>note</code> string</td>
+  <td>Authenticated admin; handler has no additional specific permission test</td>
+</tr>
+<tr>
+  <td><code>warn</code></td>
+  <td><code>reason</code> string</td>
+  <td><code>players.warn</code></td>
+</tr>
+<tr>
+  <td><code>ban</code></td>
+  <td><code>duration</code> string, <code>reason</code> string</td>
+  <td><code>players.ban</code></td>
+</tr>
+<tr>
+  <td><code>whitelist</code></td>
+  <td><code>status</code> boolean</td>
+  <td><code>players.whitelist</code></td>
+</tr>
+<tr>
+  <td><code>removeIds</code></td>
+  <td><code>ids</code> string array</td>
+  <td><code>players.remove_ids</code></td>
+</tr>
+<tr>
+  <td><code>message</code></td>
+  <td><code>message</code> string</td>
+  <td><code>players.direct_message</code></td>
+</tr>
+<tr>
+  <td><code>kick</code></td>
+  <td><code>reason</code> string</td>
+  <td><code>players.kick</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Ban duration syntax and player-resolution details are delegated to txAdmin's current validator, not guessed here. A legacy/native <code>DropPlayer</code> action is not an alternative way to register a txAdmin ban.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>Allowlist path</th>
+  <th>Basic JSON body</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>POST /whitelist/approvals/add</code></td>
+  <td><code>identifier</code> string</td>
+</tr>
+<tr>
+  <td><code>POST /whitelist/approvals/remove</code></td>
+  <td><code>identifier</code> string</td>
+</tr>
+<tr>
+  <td><code>POST /whitelist/requests/approve</code></td>
+  <td><code>reqId</code> string</td>
+</tr>
+<tr>
+  <td><code>POST /whitelist/requests/deny</code></td>
+  <td><code>reqId</code> string</td>
+</tr>
+<tr>
+  <td><code>POST /whitelist/requests/deny_all</code></td>
+  <td><code>newestVisible</code> cutoff</td>
+</tr>
+</tbody>
+</table></div>
+<p>These handlers test <code>players.whitelist</code>. Preapproval accepts a validated player identifier; the upstream handles registration and event emission. The bridge does not edit txAdmin's JSON database files directly.</p>
+<h2>Upstream response semantics</h2>
+<p>HTTP 200 alone does not mean success. The adapter treats upstream <code>logout</code>, <code>error</code>, <code>type: error</code>, and <code>success: false</code> as failures and returns a bridge error. Even an application error can follow a partial database change. Writes are never automatically retried upstream. Transport timeout is reported as outcome-unknown.</p>
+<p>Raw privileged JSON is not privacy-filtered. Do not expose <code>data.upstream</code> wholesale on a public site or log returned credentials/PII. Text results carry <code>interpretation: unverified_text</code>; do not render them as HTML or assume a login page is successful application data. The 256 KiB upstream response check occurs after the FiveM HTTP callback receives data, not as a streaming network download cap. Do not enable large database backups or logs as if this were a streaming export service.</p>
+<h2>Upgrade audit</h2>
+<pre><code class="language-sh">python3 tools/audit_upstream.py --ref master
+# or compare a checked-out source tree without network access:
+python3 tools/audit_upstream.py --source-root /path/to/txAdmin
+</code></pre>
+<p>This detects central route-registration and documented event-name additions/removals. It does <strong>not</strong> prove unchanged payloads, middleware internals, permissions, WebSocket behavior or runtime compatibility. Review handler diffs and repeat staging tests after an upstream upgrade before re-enabling the adapter.</p>
+<h2>Complete pinned central-router inventory</h2>
+<p><code>apiAuthMw</code> means the upstream API-auth middleware, including browser-session CSRF requirements. <code>webAuthMw</code> is the rendered-page auth middleware. <code>hostAuthMw</code> is the separate environment-token mechanism. <code>intercomAuthMw</code> is private monitor/control transport. <code>none</code> only appears on blocked development-only registrations.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>Route ID</th>
+  <th>Method</th>
+  <th>Upstream path</th>
+  <th>Middleware</th>
+  <th>Bridge classification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>adminManager_page</code></td>
+  <td>GET</td>
+  <td><code>/legacy/adminManager</code></td>
+  <td><code>webAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>cfgEditor_page</code></td>
+  <td>GET</td>
+  <td><code>/legacy/cfgEditor</code></td>
+  <td><code>webAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>masterActions_page</code></td>
+  <td>GET</td>
+  <td><code>/legacy/masterActions</code></td>
+  <td><code>webAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>resources</code></td>
+  <td>GET</td>
+  <td><code>/legacy/resources</code></td>
+  <td><code>webAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>serverLog</code></td>
+  <td>GET</td>
+  <td><code>/legacy/serverLog</code></td>
+  <td><code>webAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>whitelist_page</code></td>
+  <td>GET</td>
+  <td><code>/legacy/allowlist</code></td>
+  <td><code>webAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>setup_get</code></td>
+  <td>GET</td>
+  <td><code>/legacy/setup</code></td>
+  <td><code>webAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>deployer_stepper</code></td>
+  <td>GET</td>
+  <td><code>/legacy/deployer</code></td>
+  <td><code>webAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>auth_self</code></td>
+  <td>GET</td>
+  <td><code>/auth/self</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>reference-only: authentication lifecycle</td>
+</tr>
+<tr>
+  <td><code>auth_verifyPassword</code></td>
+  <td>POST</td>
+  <td><code>/auth/password</code></td>
+  <td><code>authLimiter</code></td>
+  <td>reference-only: authentication lifecycle</td>
+</tr>
+<tr>
+  <td><code>auth_logout</code></td>
+  <td>POST</td>
+  <td><code>/auth/logout</code></td>
+  <td><code>authLimiter</code></td>
+  <td>reference-only: authentication lifecycle</td>
+</tr>
+<tr>
+  <td><code>auth_addMasterPin</code></td>
+  <td>POST</td>
+  <td><code>/auth/addMaster/pin</code></td>
+  <td><code>authLimiter</code></td>
+  <td>reference-only: authentication lifecycle</td>
+</tr>
+<tr>
+  <td><code>auth_addMasterCallback</code></td>
+  <td>POST</td>
+  <td><code>/auth/addMaster/callback</code></td>
+  <td><code>authLimiter</code></td>
+  <td>reference-only: authentication lifecycle</td>
+</tr>
+<tr>
+  <td><code>auth_addMasterSave</code></td>
+  <td>POST</td>
+  <td><code>/auth/addMaster/save</code></td>
+  <td><code>authLimiter</code></td>
+  <td>reference-only: authentication lifecycle</td>
+</tr>
+<tr>
+  <td><code>auth_providerRedirect</code></td>
+  <td>GET</td>
+  <td><code>/auth/cfxre/redirect</code></td>
+  <td><code>authLimiter</code></td>
+  <td>reference-only: authentication lifecycle</td>
+</tr>
+<tr>
+  <td><code>auth_providerCallback</code></td>
+  <td>POST</td>
+  <td><code>/auth/cfxre/callback</code></td>
+  <td><code>authLimiter</code></td>
+  <td>reference-only: authentication lifecycle</td>
+</tr>
+<tr>
+  <td><code>auth_changePassword</code></td>
+  <td>POST</td>
+  <td><code>/auth/changePassword</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>reference-only: authentication lifecycle</td>
+</tr>
+<tr>
+  <td><code>auth_getIdentifiers</code></td>
+  <td>GET</td>
+  <td><code>/auth/getIdentifiers</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>reference-only: authentication lifecycle</td>
+</tr>
+<tr>
+  <td><code>auth_changeIdentifiers</code></td>
+  <td>POST</td>
+  <td><code>/auth/changeIdentifiers</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>reference-only: authentication lifecycle</td>
+</tr>
+<tr>
+  <td><code>adminManager_getModal</code></td>
+  <td>POST</td>
+  <td><code>/adminManager/getModal/:modalType</code></td>
+  <td><code>webAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>adminManager_actions</code></td>
+  <td>POST</td>
+  <td><code>/adminManager/:action</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>setup_post</code></td>
+  <td>POST</td>
+  <td><code>/setup/:action</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>deployer_status</code></td>
+  <td>GET</td>
+  <td><code>/deployer/status</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>deployer_actions</code></td>
+  <td>POST</td>
+  <td><code>/deployer/recipe/:action</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>settings_getConfigs</code></td>
+  <td>GET</td>
+  <td><code>/settings/configs</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>settings_saveConfigs</code></td>
+  <td>POST</td>
+  <td><code>/settings/configs/:card</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>settings_getBanTemplates</code></td>
+  <td>GET</td>
+  <td><code>/settings/banTemplates</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>settings_saveBanTemplates</code></td>
+  <td>POST</td>
+  <td><code>/settings/banTemplates</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>settings_resetServerDataPath</code></td>
+  <td>POST</td>
+  <td><code>/settings/resetServerDataPath</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>masterActions_getBackup</code></td>
+  <td>GET</td>
+  <td><code>/masterActions/backupDatabase</code></td>
+  <td><code>webAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>masterActions_actions</code></td>
+  <td>POST</td>
+  <td><code>/masterActions/:action</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>fxserver_controls</code></td>
+  <td>POST</td>
+  <td><code>/fxserver/controls</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>fxserver_commands</code></td>
+  <td>POST</td>
+  <td><code>/fxserver/commands</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>fxserver_downloadLog</code></td>
+  <td>GET</td>
+  <td><code>/fxserver/downloadLog</code></td>
+  <td><code>webAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>fxserver_schedule</code></td>
+  <td>POST</td>
+  <td><code>/fxserver/schedule</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>cfgEditor_save</code></td>
+  <td>POST</td>
+  <td><code>/cfgEditor/save</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>intercom</code></td>
+  <td>POST</td>
+  <td><code>/intercom/:scope</code></td>
+  <td><code>intercomAuthMw</code></td>
+  <td>blocked: private intercom</td>
+</tr>
+<tr>
+  <td><code>diagnostics_getDiagnostics</code></td>
+  <td>GET</td>
+  <td><code>/diagnostics/getDiagnostics</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>diagnostics_sendReport</code></td>
+  <td>POST</td>
+  <td><code>/diagnostics/sendReport</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>advanced_runCommand</code></td>
+  <td>POST</td>
+  <td><code>/advanced/run</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>serverLogPartial</code></td>
+  <td>GET</td>
+  <td><code>/serverLog/partial</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>systemLogs</code></td>
+  <td>GET</td>
+  <td><code>/systemLog/:scope</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>perfChart</code></td>
+  <td>GET</td>
+  <td><code>/perfChartData/:thread</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>playerDrops</code></td>
+  <td>GET</td>
+  <td><code>/playerDropsData</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>history_stats</code></td>
+  <td>GET</td>
+  <td><code>/history/stats</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>history_search</code></td>
+  <td>GET</td>
+  <td><code>/history/search</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>history_actionModal</code></td>
+  <td>GET</td>
+  <td><code>/history/action</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>history_actions</code></td>
+  <td>POST</td>
+  <td><code>/history/:action</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>player_modal</code></td>
+  <td>GET</td>
+  <td><code>/player</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>player_stats</code></td>
+  <td>GET</td>
+  <td><code>/player/stats</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>player_search</code></td>
+  <td>GET</td>
+  <td><code>/player/search</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>player_checkJoin</code></td>
+  <td>POST</td>
+  <td><code>/player/checkJoin</code></td>
+  <td><code>intercomAuthMw</code></td>
+  <td>blocked: private intercom</td>
+</tr>
+<tr>
+  <td><code>player_actions</code></td>
+  <td>POST</td>
+  <td><code>/player/:action</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>whitelist_list</code></td>
+  <td>GET</td>
+  <td><code>/whitelist/:table</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>whitelist_actions</code></td>
+  <td>POST</td>
+  <td><code>/whitelist/:table/:action</code></td>
+  <td><code>apiAuthMw</code></td>
+  <td>experimental</td>
+</tr>
+<tr>
+  <td><code>host_status</code></td>
+  <td>GET</td>
+  <td><code>/host/status</code></td>
+  <td><code>hostAuthMw</code></td>
+  <td>host-status</td>
+</tr>
+<tr>
+  <td><code>dev_get</code></td>
+  <td>GET</td>
+  <td><code>/dev/:scope</code></td>
+  <td><code>none</code></td>
+  <td>blocked: development-only</td>
+</tr>
+<tr>
+  <td><code>dev_post</code></td>
+  <td>POST</td>
+  <td><code>/dev/:scope</code></td>
+  <td><code>none</code></td>
+  <td>blocked: development-only</td>
+</tr>
+</tbody>
+</table></div>
+<p class="back"><a href="#top">Back to contents ↑</a></p></section><section id="wordpress"><h1>WordPress integration reference</h1>
+<h2>Configuration and storage</h2>
+<p>The complete installable plugin is <code>wordpress/txbridge-wordpress</code>; the standalone plugin ZIP has that folder at its root. Runtime configuration lives in the <code>TXBRIDGE_SERVERS</code> constant in <code>wp-config.php</code>, not a public REST response or browser JavaScript. Use independent API and webhook secrets per server/connection. Multiple configured server IDs are supported in the map.</p>
+<p>The plugin creates one table per WordPress site: <code>&lt;prefix&gt;txbridge_events</code>. Rows contain a local receipt ID, server ID, source event ID/sequence, type, source timestamp, receipt timestamp, payload digest, and sanitized payload. Server/event identity columns use an explicit case-sensitive ASCII collation, independent of the site's usual text collation. A unique <code>(server_id,event_id)</code> key deduplicates deliveries. No txAdmin database files are read, mounted or modified.</p>
+<p>Retained payloads may still be personal/operational data. Daily cleanup uses <code>TXBRIDGE_RETENTION_DAYS</code> (30 by default, restricted to 1–365). WordPress's normal scheduled-task execution depends on site traffic/cron configuration; use a real scheduled WordPress cron invocation when retention timing matters. Deactivation unschedules cleanup. Uninstall preserves the table unless <code>TXBRIDGE_DELETE_DATA_ON_UNINSTALL</code> is explicitly true. Confirm retention and backup policies separately.</p>
+<h2>REST endpoints</h2>
+<p>All paths below are under your site's normal <code>/wp-json/txbridge/v1</code> prefix.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>Method and route</th>
+  <th>Authentication</th>
+  <th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>POST /webhook</code></td>
+  <td>Webhook HMAC, timestamp and valid server mapping</td>
+  <td>Durable signed event inbox</td>
+</tr>
+<tr>
+  <td><code>GET /status/{server}</code></td>
+  <td>Public only when that server has <code>public_status: true</code></td>
+  <td>Limited status projection</td>
+</tr>
+<tr>
+  <td><code>GET /admin/events/{server}?after=0&amp;limit=50</code></td>
+  <td>WordPress authenticated <code>manage_options</code></td>
+  <td>Private inbox consumption</td>
+</tr>
+<tr>
+  <td><code>POST /admin/request/{server}</code></td>
+  <td>WordPress authenticated <code>manage_options</code></td>
+  <td>Server-side signed call to the fixed FiveM bridge</td>
+</tr>
+</tbody>
+</table></div>
+<p>For cookie-based WordPress REST authentication, send the standard WordPress REST nonce in addition to the logged-in cookie. Use WordPress's authenticated server-to-server mechanism for a trusted external administrative consumer; the plugin does not invent a second public admin password system. Granting <code>manage_options</code> is broad WordPress authority, so do not give it to ordinary website members merely for this feature.</p>
+<h3>Webhook acceptance</h3>
+<p>The permission callback verifies HMAC before processing JSON. The receiver checks version 1, bounded identifiers/type, source sequence, matching body/header server/event IDs, reasonable source time, and object/array data. It performs a database insert before invoking custom application hooks.</p>
+<p>First acceptance returns HTTP 202 with <code>accepted: true</code>. An identical duplicate returns 200 with <code>duplicate: true</code>. The same event ID with a different body returns 409. Storage failure returns 503 so a sender can retry. The source signature timestamp must be fresh even when the source event was emitted earlier.</p>
+<h3>Public status</h3>
+<p>The projection includes only <code>serverId</code>, configured <code>label</code>, <code>state</code>, <code>players</code>, <code>maxPlayers</code>, <code>observedAt</code>, and <code>staleAfterSeconds</code>. It reads the highest-source-sequence <code>bridge.status</code> snapshot rather than letting a delayed lower-sequence event replace newer status. State is <code>unknown</code> before the first snapshot, <code>online</code> for a recent snapshot, or <code>stale</code> after 90 seconds.</p>
+<p>A stale snapshot does not distinguish a stopped server from network failure, authentication error, queue delay or an inactive resource. Do not display stale cached player numbers as proof of a live server. The supplied shortcode says “Status unavailable” instead.</p>
+<h3>Private inbox cursor</h3>
+<p>The admin events route uses the local <strong>receipt ID</strong> as <code>after</code>, not the source event sequence. Return shape:</p>
+<pre><code class="language-json">{
+  &quot;items&quot;: [{&quot;receiptId&quot;:17,&quot;event&quot;:{&quot;id&quot;:&quot;main-123&quot;}}],
+  &quot;cursor&quot;:17
+}
+</code></pre>
+<p>The event above is abbreviated. Persist the cursor only after processing the complete page. This cursor lets a consumer receive a late lower-source-sequence event that was inserted after a newer one. Use source sequence separately when deciding which observation represents the newest state. Retention expiration can still remove unread data; monitor lag and keep your own durable processing checkpoint/work queue.</p>
+<h3>Private request wrapper</h3>
+<p>To read the server from an authenticated WordPress admin REST call, POST this JSON to <code>/admin/request/main</code>:</p>
+<pre><code class="language-json">{&quot;method&quot;:&quot;GET&quot;,&quot;path&quot;:&quot;/v1/status&quot;}
+</code></pre>
+<p>To execute an enabled native action, send <code>method: POST</code>, the relative bridge <code>path</code>, a JSON-object <code>body</code>, and a caller-owned <code>idempotencyKey</code>. You cannot supply a destination URL or headers. WordPress chooses the configured server URL and signs the request using the server-side secret. All Lua scopes/feature flags and player-session checks still apply.</p>
+<p>Direct txAdmin internal proxying is rejected by WordPress unless <code>TXBRIDGE_ALLOW_INTERNAL_PROXY</code> is true, independently of the Lua opt-in. Leave that false for normal website integrations.</p>
+<h2>PHP application client</h2>
+<pre><code class="language-php">$result = TXBridge_Client::request('main', 'GET', '/v1/status');
+if (is_wp_error($result)) {
+    // Present a controlled error; do not dump secrets or request headers.
+    return;
+}
+$http_status = $result-&gt;get_status();
+$payload = $result-&gt;get_data(); // ['ok' =&gt; ..., 'data' =&gt; ...] or ['error' =&gt; ...]
+</code></pre>
+<p>Signature: <code>request(string $server, string $method, string $path, mixed $data = null, string $idem = '')</code>. Return value is <code>WP_REST_Response</code> or <code>WP_Error</code>, not a raw array. All POSTs require an explicit idempotency key. The client does not automatically repeat a timed-out write.</p>
+<p>Configured bases must use HTTPS. The client rejects absolute/request-supplied destination paths, redirects, bodies on GET, invalid relative targets and oversized bodies. TLS verification remains enabled. Requests have a 15-second timeout and a 512 KiB response-read limit. Do not disable TLS checks to work around a bad certificate.</p>
+<p>Call privileged operations only from your own capability-checked handlers/jobs. This client is not a frontend JavaScript SDK and does not turn every WordPress user into a FiveM administrator.</p>
+<h2>Hook and extension example</h2>
+<pre><code class="language-php">add_action('txbridge_event', function (array $event, string $server): void {
+    if ($event['type'] !== 'txadmin.scheduledRestart') {
+        return;
+    }
+    // Queue your own idempotent business operation or update a non-critical display.
+}, 10, 2);
+</code></pre>
+<p>A full non-destructive example is in <code>examples/wordpress-consumer.php</code>. Hooks run after the first durable insert and are not rerun for identical delivery retries. A crash after insert/before hook, or a thrown exception in a hook, can leave downstream work incomplete. The inbox survives, but that does not create an exactly-once transaction with your external side effect. Build a separate durable consumer/reconciliation loop for billing, paid access, ban enforcement or other important state.</p>
+<h2>Shortcode and administrator page</h2>
+<p><code>[txbridge_status server=&quot;main&quot;]</code> renders only for explicitly public servers. Its small script polls the public WordPress projection every 30 seconds with a five-second timeout, uses <code>textContent</code> for updates, and never embeds an API secret. Tools → txBridge shows connection observations and configuration guidance. There is no full browser-based txAdmin replacement, player moderation dashboard, WooCommerce provisioning workflow, account-linking flow or membership/allowlist synchronization included in version 0.1.0.</p>
+<p class="back"><a href="#top">Back to contents ↑</a></p></section><section id="functions"><h1>Public functions and code organization</h1>
+<h2>FiveM resource exports</h2>
+<p>All exports are server-side. No client script or privileged net event is installed.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>Export</th>
+  <th>Inputs</th>
+  <th>Return</th>
+  <th>Access and meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>GetStatus()</code></td>
+  <td>None</td>
+  <td>Status table</td>
+  <td>Copied current bridge/native snapshot</td>
+</tr>
+<tr>
+  <td><code>GetCapabilities()</code></td>
+  <td>None</td>
+  <td>Capabilities table</td>
+  <td>Copied flags, event names and limits</td>
+</tr>
+<tr>
+  <td><code>GetPlayers()</code></td>
+  <td>None</td>
+  <td>Array of player objects</td>
+  <td>Copied, privacy-filtered connection list</td>
+</tr>
+<tr>
+  <td><code>PublishEvent(name, data)</code></td>
+  <td>Bounded event name and Lua table</td>
+  <td>Event ID, or <code>nil, error</code> for rejected publisher/input</td>
+  <td>Exact calling resource must be in <code>Events.allowedPublishers</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Example from another server resource:</p>
+<pre><code class="language-lua">local status = exports.txbridge:GetStatus()
+local players = exports.txbridge:GetPlayers()
+local id, err = exports.txbridge:PublishEvent('queue.updated', {
+    waiting = 12,
+    estimatedWaitSeconds = 90,
+})
+if not id then print(err or 'publish failed') end
+</code></pre>
+<p><code>PublishEvent</code> uses the <code>custom.</code> namespace and checks <code>GetInvokingResource()</code>. Grant a publisher explicitly, for example <code>Config.Events.allowedPublishers['my_queue'] = true</code>. Event names begin with a letter, contain only letters/digits/underscore/dot/hyphen, and are at most 100 characters before the prefix. Table contents must be safe to persist/share. Storage faults can raise an error; important callers should handle failures rather than assuming acceptance.</p>
+<p>Read exports return copies, not references that mutate bridge state. These exports are available to trusted server resources; they are not a security sandbox against a malicious resource installed by the server owner.</p>
+<h2>Local diagnostic command</h2>
+<p><code>txbridge_status</code> is registered as a restricted command and also checks console source <code>0</code>. It logs version, configured server ID, event sequence, queue/dead-letter and dropped counts. It does not print credentials. There are no resource-level commands for arbitrary console execution, offline process start or txAdmin login.</p>
+<h2>Lua modules and internal functions</h2>
+<p>Only the exports and documented HTTP protocols are application interfaces. Internal <code>TxBridge.*</code> helpers can change between releases; do not call them from unrelated resources.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>File</th>
+  <th>Responsibility / important internal entry points</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>fxmanifest.lua</code></td>
+  <td>Server-only load order; no framework/client dependency</td>
+</tr>
+<tr>
+  <td><code>config.lua</code></td>
+  <td>Client grants, peers, privacy, action flags, delivery policy, optional upstream rules</td>
+</tr>
+<tr>
+  <td><code>server/crypto.lua</code></td>
+  <td>Pure Lua SHA-256, HMAC-SHA256 and signature comparison</td>
+</tr>
+<tr>
+  <td><code>server/core.lua</code></td>
+  <td>JSON helpers, KVP journal, pseudonyms/redaction, status/players/resources, session IDs and URL checks</td>
+</tr>
+<tr>
+  <td><code>server/security.lua</code></td>
+  <td>Header/peer parsing, rate limits, request authentication, scopes and persistent idempotency</td>
+</tr>
+<tr>
+  <td><code>server/catalog.lua</code></td>
+  <td>Pinned txAdmin route metadata and classifications</td>
+</tr>
+<tr>
+  <td><code>server/transport.lua</code></td>
+  <td>Bounded native HTTP requests, persistent enqueue/pump/retry/dead-letter handling</td>
+</tr>
+<tr>
+  <td><code>server/events.lua</code></td>
+  <td>Documented schema selection, trusted event capture, publication and FiveM lifecycle observations</td>
+</tr>
+<tr>
+  <td><code>server/txadmin.lua</code></td>
+  <td>Named internal-route adapter, host status, exact grants and upstream error handling</td>
+</tr>
+<tr>
+  <td><code>server/api.lua</code></td>
+  <td>Request parsing, dispatch, validation, native actions and response envelopes</td>
+</tr>
+<tr>
+  <td><code>server/main.lua</code></td>
+  <td>Startup validation, HTTP handler, exports, local command and background loops while FXServer runs</td>
+</tr>
+</tbody>
+</table></div>
+<p>The loops are ordinary running-resource tasks, not a separate process. They stop with the resource/FXServer. No invisible external scheduler is installed.</p>
+<h2>WordPress application interfaces</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>Interface</th>
+  <th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>TXBridge_Client::request(...)</code></td>
+  <td>Server-side signed bridge request; returns <code>WP_REST_Response</code> or <code>WP_Error</code></td>
+</tr>
+<tr>
+  <td><code>txbridge_event</code> action hook</td>
+  <td>Receives the first stored event and server ID; nontransactional extension point</td>
+</tr>
+<tr>
+  <td><code>[txbridge_status server=&quot;...&quot;]</code></td>
+  <td>Opt-in public, limited status widget</td>
+</tr>
+<tr>
+  <td>REST <code>/admin/events/{server}</code></td>
+  <td>Durable inbox access for an authorized consumer</td>
+</tr>
+<tr>
+  <td>REST <code>/admin/request/{server}</code></td>
+  <td>Capability-checked server-side bridge call</td>
+</tr>
+</tbody>
+</table></div>
+<p><code>TXBridge_Signing</code> encapsulates canonical request/webhook signing and verification. <code>TXBridge_WordPress</code> handles activation, retention, permission callbacks, receipt, snapshots, private endpoints, shortcode and Tools page. These implementation classes are not a promise to expose every method as a remote endpoint.</p>
+<h2>Other applications</h2>
+<p>Use the standard-library Python client as a reference for Node, Laravel, Django, n8n or another backend. A receiver needs exact-byte webhook HMAC verification, a freshness window, persistent event-ID/digest deduplication, and a deliberate retention policy. A sending application needs a fixed HTTPS bridge base, a dedicated client ID/secret/scope set and the request-signing protocol. Do not distribute those secrets to browsers/mobile game clients or untrusted workflow viewers.</p>
+<p>Add another <code>Config.Clients</code> entry with a unique <code>secretConvar</code> and minimal scopes. For a second push destination, add a <code>Config.Webhooks</code> entry with a fixed URL convar, separate secret convar, and event-type allowlist. An event filter can use <code>events = { ['bridge.status'] = true }</code> rather than <code>['*']</code> for a status-only consumer.</p>
+<p class="back"><a href="#top">Back to contents ↑</a></p></section><section id="security"><h1>Security, operational limits and failure recovery</h1>
+<h2>Deployment boundary</h2>
+<p>Default configuration is read-only, with only actual loopback API peers accepted, no raw identifiers, all native writes disabled, and the internal txAdmin adapter disabled. WordPress public status is separately disabled. An unconfigured secret is not a guest account.</p>
+<p>Use HTTPS, a minimal peer/IP allowlist, per-application secrets and scopes, exact route/resource grants, and least-privilege txAdmin permissions. Keep txAdmin and its data directory private. Do not use txAdmin's private intercom token as a generic integration API key, disable upstream authentication, forge NUI administrator headers, or expose developer/debug routes.</p>
+<p>HMAC is not encryption; the private proxy-to-FXServer hop is trusted. TLS authenticates webhook acknowledgments and upstream server responses. URL configuration is operator-controlled; request bodies cannot redirect calls to arbitrary hosts. Outbound redirects are not followed. The code is not a defense against a compromised FXServer host, WordPress administrator, another malicious installed server resource, or a hostile hosting operator with filesystem/console access.</p>
+<p>The native API has no arbitrary console command endpoint. However, <strong>explicitly enabling internal txAdmin command/master/config/deployer routes can grant equivalent or greater authority</strong>. An exact route rule still leaves allowed query/body inputs under that client's control. It is not safe to grant such a scope to ordinary website users or a broad automation key.</p>
+<h2>Limits and defaults</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>Control</th>
+  <th style="text-align:right">Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>Inbound JSON body</td>
+  <td style="text-align:right">32 KiB</td>
+</tr>
+<tr>
+  <td>Body receive timeout / pending body slots</td>
+  <td style="text-align:right">5 seconds / 16</td>
+</tr>
+<tr>
+  <td>Rate refill and burst</td>
+  <td style="text-align:right">120 requests/minute / 30 per peer and client bucket</td>
+</tr>
+<tr>
+  <td>Rate bucket capacity</td>
+  <td style="text-align:right">256</td>
+</tr>
+<tr>
+  <td>Signature clock skew</td>
+  <td style="text-align:right">90 seconds</td>
+</tr>
+<tr>
+  <td>Retained nonce capacity</td>
+  <td style="text-align:right">2,048</td>
+</tr>
+<tr>
+  <td>Idempotency entries / retention</td>
+  <td style="text-align:right">512 / 24 hours</td>
+</tr>
+<tr>
+  <td>Cached idempotent response</td>
+  <td style="text-align:right">Up to 16 KiB</td>
+</tr>
+<tr>
+  <td>Event payload before envelope</td>
+  <td style="text-align:right">8 KiB; oversized content becomes a truncation marker</td>
+</tr>
+<tr>
+  <td>Event history / age</td>
+  <td style="text-align:right">200 events / seven days, whichever removes first</td>
+</tr>
+<tr>
+  <td>Local audit entries</td>
+  <td style="text-align:right">200</td>
+</tr>
+<tr>
+  <td>Queued deliveries / dead letters</td>
+  <td style="text-align:right">500 / 100</td>
+</tr>
+<tr>
+  <td>Delivery attempts / age</td>
+  <td style="text-align:right">Eight / 24 hours</td>
+</tr>
+<tr>
+  <td>Native HTTP request timeout / outstanding requests</td>
+  <td style="text-align:right">Ten seconds / four</td>
+</tr>
+<tr>
+  <td>Status interval</td>
+  <td style="text-align:right">30 seconds; configuration minimum ten seconds</td>
+</tr>
+<tr>
+  <td>Upstream txAdmin response</td>
+  <td style="text-align:right">256 KiB post-receive application check</td>
+</tr>
+<tr>
+  <td>WordPress accepted webhook / client response</td>
+  <td style="text-align:right">32 KiB / 512 KiB</td>
+</tr>
+<tr>
+  <td>WordPress inbox retention</td>
+  <td style="text-align:right">30 days by default</td>
+</tr>
+</tbody>
+</table></div>
+<p>With default 30-second status snapshots alone, 200 retained events represent roughly 100 minutes, not seven guaranteed days. At that rate, a 30-day WordPress inbox can hold around 86,400 status records <strong>per server</strong>, plus all other events. Size your database, consider longer snapshot intervals and narrower event filters, and monitor cleanup/queue lag. The stock public freshness threshold is 90 seconds; changing the emission cadence may require a coordinated display policy change.</p>
+<p>Rate limits behind a shared local proxy may aggregate several applications into the same peer bucket. Tune deliberately; do not remove peer authentication or bounds to conceal overload. The resource checks body size after receiving native data as well as Content-Length; the reverse proxy's body limit is the earlier network-facing bound. The upstream response-size limit is not a streaming memory cap.</p>
+<h2>Durability and ordering</h2>
+<p>The Lua implementation stores a bounded JSON journal in resource KVP. Events, outbox entries and the sequence live together; replay/idempotency stores are also persistent. It rewrites bounded documents rather than using a transactional message broker. This is intended for modest event volume, not an unlimited high-throughput audit pipeline. KVP calls do not provide an application-level fsync or multi-store transaction guarantee.</p>
+<p>There is no end-to-end exactly-once delivery guarantee. Retried webhook events can arrive more than once and out of order. WordPress deduplicates accepted IDs/bodies, but its post-insert application hook is not transactional with billing, moderation or another service. A source process can disappear before emitting an event, or before a delivery succeeds. Do not claim that a webhook is an authoritative replica of the txAdmin database.</p>
+<p>Preserve KVP and server identity across ordinary restarts. Protect backups and restore procedures. Reusing an old sequence under the same server ID can collide with WordPress's deduplication key. Allocate a new ID when resetting/restoring an old timeline, and migrate consumers explicitly. A corrupt JSON KVP store causes startup failure rather than silently erasing evidence. Structurally invalid/missing persistence or storage failures need operator repair and backups, not blind deletion.</p>
+<p>The local audit is bounded, mutable by the host operator, and not tamper-proof. Ship separately to an access-controlled audit store when independent evidence is required. Do not log raw request headers, cookies, shared secrets, full upstream payloads, or console commands.</p>
+<h2>Upstream timeouts and partial success</h2>
+<p>FiveM's HTTP callback cannot be reliably canceled by this Lua wrapper. The bridge can return a timeout and ignore a late result, but it continues counting the outstanding native request until its callback arrives. This prevents unlimited timed-out native requests; it can also exhaust available slots if callbacks never return. Alert on outstanding requests/timeouts and investigate the network/runtime before restarting the bridge to clear accounting.</p>
+<p>A txAdmin warning or ban may be saved before an in-game notification fails. HTTP 200 may carry an application error. A resource restart may stop a resource but fail to start it. An FXServer stop/restart can kill the bridge before its action acknowledgment arrives. Always reconcile actual state on ambiguous outcomes. Never create a new idempotency key simply to force a previously uncertain destructive operation to run again.</p>
+<h2>Privacy</h2>
+<p>Default event redaction removes player/admin names, message/reason text and console commands. Identifiers are pseudonymized or redacted; IPs and hardware tokens are not exposed through the normal API. Pseudonymized identifiers, timestamps, net IDs, operation types and activity patterns may still identify/link people. Turning on names, text or raw identifiers increases the sensitivity of the WordPress inbox and all receivers.</p>
+<p>The separate <code>players:identifiers</code> scope also requires a privacy opt-in. Internal txAdmin responses bypass event sanitization and may contain full personal or sensitive operational records. Do not send them to public status endpoints. Free-text content can contain personal information even when its field is not an identifier.</p>
+<p>Apply your organization's access, deletion, backup and retention policies to WordPress's table, FiveM KVP, external logs and consumer databases. This document does not determine your legal basis, consent obligations or retention requirements.</p>
+<h2>Recovery checklist</h2>
+<p>For signature errors, verify matching server/key IDs and independent directional secrets, synchronized clocks, exact path/body serialization, preserved headers, and lack of redirects. Do not disable authentication to debug.</p>
+<p>For no events, verify the resource is started, txAdmin is actually managing the server, the canonical HTTPS webhook URL, the WordPress plugin/table, and local queue/error counters. <code>txbridge_status</code> is a safe first diagnostic.</p>
+<p>For delivery failures, repair TLS/DNS/network/receiver/configuration first, inspect retained dead-letter metadata with an authorized client, then explicitly retry selected deliveries. Check whether a hook needs its own inbox-based recovery even after webhook acceptance. Deduplication prevents an identical delivery from rerunning a failed hook.</p>
+<p>For a txAdmin upgrade, disable experimental routes, compare the new source surface and handler/auth semantics, renew an authorized limited session only if needed, then repeat staging tests. A passing surface-name audit alone is insufficient.</p>
+<p class="back"><a href="#top">Back to contents ↑</a></p></section><section id="testing"><h1>Tests, evidence and deployment acceptance</h1>
+<h2>What was executed for this package</h2>
+<p>The implementation was executed locally under real Lua 5.4 using a Python <code>ctypes</code> runner, with mocked FiveM natives/HTTP/KVP/event scheduling and a test JSON adapter. The WordPress plugin was exercised by PHP with WordPress and database doubles, not by installing WordPress. Shared protocol fixtures verify the Lua, PHP and Python request-signing implementations against the same expected HMAC values.</p>
+<p>The generated <code>TEST-RESULTS.txt</code> in this directory contains the actual recorded test/lint output. Lua and PHP tests check assertions and fail with a nonzero exit code. The Python tests check the CLI protocol/URL validation, surface-audit parser, explicit database identity-column collation and API/catalog consistency. Syntax checks do not replace runtime tests.</p>
+<h2>Running tests</h2>
+<p>On a Debian/Ubuntu development machine with Python 3.10+ and PHP 8.1+, install the Lua shared library (the resource itself does not require this development dependency):</p>
+<pre><code class="language-sh">sudo apt-get install liblua5.4-0 php-cli
+python3 tests/run_lua.py
+php tests/test_wordpress.php
+python3 -m unittest discover -s tests -p 'test_*.py'
+node --check wordpress/txbridge-wordpress/assets/status.js
+find wordpress -name '*.php' -exec php -l {} \;
+</code></pre>
+<p>The Lua runner locates <code>liblua5.4</code> via the platform library loader; on a different operating system install an equivalent library or run the test suite in Linux. No pip dependency is needed for these tests. The runtime Lua resource is self-contained. GitHub Actions configuration is supplied, but no remote CI workflow was run as part of creating the ZIP.</p>
+<h2>Covered behaviors</h2>
+<p>SHA-256 and RFC 4231 HMAC vectors; cross-language Unicode-body signing; timestamp/path/body/idempotency tampering; replay rejection across storage reload; peer spoofing; scope/flag gates; body timeouts/limits; native player-ID reuse protection; persisted idempotency; all current documented event subscriptions; privacy defaults and truncation; queue bounds; transient retries/dead letters; native HTTP timeout accounting; explicit upstream route restrictions and 200-with-error handling; WordPress permissions; webhook schema/signature and duplicate conflicts; inbox storage errors; public projection redaction; out-of-order/stale snapshots; receipt cursor semantics; fixed HTTPS client targets; and no secret-bearing shortcode output.</p>
+<h2>Not established by these tests</h2>
+<p>A successful connection to an actual FXServer/txAdmin; behavior of the exact FiveM JSON serializer and KVP persistence under power loss; native resource-control transitions; a real WordPress/MySQL/MariaDB installation and <code>dbDelta</code>; conflicts with themes/cache/security plugins; real Nginx/TLS/firewall behavior; compatibility with all txAdmin releases; large binary/log transfers; full database reconciliation; malicious-host isolation; penetration-test approval; sustained-load performance; or production readiness.</p>
+<p>None of the user's live infrastructure, GitHub repositories, WordPress settings or txAdmin accounts was modified for this package.</p>
+<h2>Required staging acceptance</h2>
+<ol>
+<li>Start the resource on a disposable server managed by the intended txAdmin build. Confirm actual <code>/txbridge/v1/...</code> routing, Lua load/JSON array behavior, monitor events, valid secret loading and KVP writes.</li>
+<li>Verify a valid signed read works through TLS, while unsigned, replayed, expired, wrong-server, altered-body and missing-scope requests fail. Attempt direct raw-port access and spoofed forwarded-IP headers; both must remain forbidden from untrusted peers.</li>
+<li>Activate the plugin on staging with the actual database engine. Confirm table creation, unique-key behavior, webhook first/duplicate/conflict responses and unauthorized admin-route rejection. Check REST cookie nonces/capabilities in the real WordPress stack.</li>
+<li>Observe genuine txAdmin scheduled-restart/announcement and appropriate disposable moderation/allowlist events. Confirm intended redaction and exact fields. Do not manufacture event notifications and call that proof of txAdmin action execution.</li>
+<li>Interrupt the webhook receiver, watch bounded retries/dead letters, restore it, retry a retained delivery and verify a single durable inbox row. Test an out-of-order snapshot and public stale indication without publishing private payloads.</li>
+<li>Restart the resource and then FXServer; confirm retained delivery/sequence/idempotency behavior and new player session IDs. Test a replacement player reusing a net ID; an old session token must not act on them. Exercise backup/identity-reset procedures separately.</li>
+<li>Enable only one harmless native action on staging, verify scope/feature controls and retry semantics, then return to the intended minimal production policy. For resource actions use a disposable allowlisted test resource, not <code>monitor</code> or the bridge.</li>
+<li>If internal txAdmin access is necessary, test the exact intended route/action on the pinned build using a limited authorized session. Test session expiry and 200-with-error/partial-success handling. Check response privacy, and test with the adapter disabled again after an upgrade.</li>
+<li>Verify clock synchronization, certificate renewal, host firewall, actual proxy source IP, retention cleanup, disk/DB growth, queue alerts and load at the intended player/event volume. Confirm an independent recovery path exists when FXServer is stopped.</li>
+</ol>
+<p>Record your environment, exact txAdmin/FXServer versions, outcomes and any deviations before using this on a production server.</p>
+<p class="back"><a href="#top">Back to contents ↑</a></p></section><section id="sources"><h1>Source review and compatibility baseline</h1>
+<p>Reviewed on <strong>2026-09-22</strong>. txAdmin central-router baseline: <strong>8a9a41410000fd92a527fe11bae2b8eeeb8b10e0</strong>. The source review distinguishes documented notification integration from version-dependent panel internals. The links below are upstream references, not services this package contacts automatically except when explicitly configured or running the audit tool.</p>
+<h2>txAdmin primary sources</h2>
+<ul>
+<li><a href="https://github.com/citizenfx/txAdmin/tree/8a9a41410000fd92a527fe11bae2b8eeeb8b10e0">Repository and integration overview</a></li>
+<li><a href="https://github.com/citizenfx/txAdmin/blob/8a9a41410000fd92a527fe11bae2b8eeeb8b10e0/docs/events.md">Documented server events</a>: event names, fields, deprecated aliases, and warning about missed offline events.</li>
+<li><a href="https://github.com/citizenfx/txAdmin/blob/8a9a41410000fd92a527fe11bae2b8eeeb8b10e0/core/modules/WebServer/router.ts">Central HTTP router</a>: all 58 inventoried registrations, middleware names and two development-only registrations.</li>
+<li><a href="https://github.com/citizenfx/txAdmin/blob/8a9a41410000fd92a527fe11bae2b8eeeb8b10e0/core/modules/WebServer/middlewares/authMws.ts">Authentication middleware</a>: host environment token, intercom separation, web/API session checks and CSRF.</li>
+<li><a href="https://github.com/citizenfx/txAdmin/blob/8a9a41410000fd92a527fe11bae2b8eeeb8b10e0/core/modules/WebServer/authLogic.ts">Authentication logic</a>: browser session validation, admin resolution and separate NUI authentication.</li>
+<li><a href="https://github.com/citizenfx/txAdmin/blob/8a9a41410000fd92a527fe11bae2b8eeeb8b10e0/core/routes/index.ts">Route exports</a>: handler mapping.</li>
+<li><a href="https://github.com/citizenfx/txAdmin/blob/8a9a41410000fd92a527fe11bae2b8eeeb8b10e0/core/routes/hostStatus.ts">Host-status handler</a>: returns the manager's host-status object.</li>
+<li><a href="https://github.com/citizenfx/txAdmin/blob/8a9a41410000fd92a527fe11bae2b8eeeb8b10e0/core/routes/player/actions.ts">Player action handler</a>: verified dynamic action names, inputs, permissions, database updates and event dispatch.</li>
+<li><a href="https://github.com/citizenfx/txAdmin/blob/8a9a41410000fd92a527fe11bae2b8eeeb8b10e0/core/routes/whitelist/actions.ts">Allowlist action handler</a>: approvals/requests operations and emitted events.</li>
+</ul>
+<p>The route inventory is derived metadata, not a distribution of upstream implementation files. Dynamic bodies for every internal handler, every development function and every frontend protocol were not independently specified or tested.</p>
+<h2>Cfx.re primary references</h2>
+<ul>
+<li><a href="https://docs.fivem.net/natives/?_0xF5C6330C=">SetHttpHandler native</a>: resource HTTP request/response interface.</li>
+<li><a href="https://docs.fivem.net/docs/scripting-reference/runtimes/lua/functions/PerformHttpRequest/">PerformHttpRequest</a>: native request callback and redirect options.</li>
+<li><a href="https://docs.fivem.net/docs/developers/server-security/">Secure your events</a>: local versus network event handling and server-side validation.</li>
+</ul>
+<h2>WordPress primary references</h2>
+<ul>
+<li><a href="https://developer.wordpress.org/rest-api/extending-the-rest-api/adding-custom-endpoints/">Adding custom REST endpoints</a>: route registration and permission callbacks.</li>
+<li><a href="https://developer.wordpress.org/reference/functions/wp_remote_request/">wp_remote_request</a>: server-side HTTP transport.</li>
+<li><a href="https://developer.wordpress.org/rest-api/using-the-rest-api/authentication/">REST authentication</a>: normal WordPress authentication/nonce model.</li>
+</ul>
+<h2>Cryptographic test reference</h2>
+<p>The test suite includes SHA-256 known answers and HMAC-SHA256 test cases from <a href="https://www.rfc-editor.org/rfc/rfc4231">RFC 4231</a>. Protocol fixtures also use the host Python standard library to cross-check exact body bytes. Passing vectors is not a substitute for an independent security review.</p>
+<p class="back"><a href="#top">Back to contents ↑</a></p></section></main></div><footer>txBridge contributors · MIT · Independent integration, not endorsed by Cfx.re, txAdmin or WordPress. No external scripts, fonts, or analytics.</footer></body></html>

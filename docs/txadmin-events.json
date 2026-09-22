@@ -1,0 +1,107 @@
+{
+  "repository": "citizenfx/txAdmin",
+  "ref": "8a9a41410000fd92a527fe11bae2b8eeeb8b10e0",
+  "retrievedAt": "2026-09-22",
+  "current": {
+    "announcement": [
+      "author",
+      "message"
+    ],
+    "serverShuttingDown": [
+      "delay",
+      "author",
+      "message"
+    ],
+    "scheduledRestart": [
+      "secondsRemaining",
+      "translatedMessage"
+    ],
+    "scheduledRestartSkipped": [
+      "secondsRemaining",
+      "temporary",
+      "author"
+    ],
+    "playerBanned": [
+      "author",
+      "reason",
+      "actionId",
+      "expiration",
+      "durationInput",
+      "durationTranslated",
+      "targetNetId",
+      "targetIds",
+      "targetHwids",
+      "targetName",
+      "kickMessage"
+    ],
+    "playerDirectMessage": [
+      "target",
+      "author",
+      "message"
+    ],
+    "playerHealed": [
+      "target",
+      "author"
+    ],
+    "playerKicked": [
+      "target",
+      "author",
+      "reason",
+      "dropMessage"
+    ],
+    "playerWarned": [
+      "author",
+      "reason",
+      "actionId",
+      "targetNetId",
+      "targetIds",
+      "targetName"
+    ],
+    "whitelistPlayer": [
+      "action",
+      "license",
+      "playerName",
+      "adminName"
+    ],
+    "whitelistPreApproval": [
+      "action",
+      "identifier",
+      "playerName",
+      "adminName"
+    ],
+    "whitelistRequest": [
+      "action",
+      "playerName",
+      "requestId",
+      "license",
+      "adminName"
+    ],
+    "actionRevoked": [
+      "actionId",
+      "actionType",
+      "actionReason",
+      "actionAuthor",
+      "playerName",
+      "playerIds",
+      "playerHwids",
+      "revokedBy"
+    ],
+    "adminAuth": [
+      "netid",
+      "isAdmin",
+      "username"
+    ],
+    "adminsUpdated": "array",
+    "configChanged": "empty",
+    "consoleCommand": [
+      "author",
+      "channel",
+      "command"
+    ]
+  },
+  "deprecated": [
+    "playerWhitelisted",
+    "healedPlayer",
+    "skippedNextScheduledRestart"
+  ]
+}

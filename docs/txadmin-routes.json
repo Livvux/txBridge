@@ -1,0 +1,620 @@
+{
+  "repository": "citizenfx/txAdmin",
+  "ref": "8a9a41410000fd92a527fe11bae2b8eeeb8b10e0",
+  "retrievedAt": "2026-09-22",
+  "routerPath": "core/modules/WebServer/router.ts",
+  "routes": [
+    {
+      "id": "adminManager_page",
+      "method": "GET",
+      "path": "/legacy/adminManager",
+      "middleware": "webAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "adminManager_page",
+      "conditional": false
+    },
+    {
+      "id": "cfgEditor_page",
+      "method": "GET",
+      "path": "/legacy/cfgEditor",
+      "middleware": "webAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "cfgEditor_page",
+      "conditional": false
+    },
+    {
+      "id": "masterActions_page",
+      "method": "GET",
+      "path": "/legacy/masterActions",
+      "middleware": "webAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "masterActions_page",
+      "conditional": false
+    },
+    {
+      "id": "resources",
+      "method": "GET",
+      "path": "/legacy/resources",
+      "middleware": "webAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "resources",
+      "conditional": false
+    },
+    {
+      "id": "serverLog",
+      "method": "GET",
+      "path": "/legacy/serverLog",
+      "middleware": "webAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "serverLog",
+      "conditional": false
+    },
+    {
+      "id": "whitelist_page",
+      "method": "GET",
+      "path": "/legacy/allowlist",
+      "middleware": "webAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "whitelist_page",
+      "conditional": false
+    },
+    {
+      "id": "setup_get",
+      "method": "GET",
+      "path": "/legacy/setup",
+      "middleware": "webAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "setup_get",
+      "conditional": false
+    },
+    {
+      "id": "deployer_stepper",
+      "method": "GET",
+      "path": "/legacy/deployer",
+      "middleware": "webAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "deployer_stepper",
+      "conditional": false
+    },
+    {
+      "id": "auth_self",
+      "method": "GET",
+      "path": "/auth/self",
+      "middleware": "apiAuthMw",
+      "exposure": "reference-only: authentication lifecycle",
+      "parameters": [],
+      "handler": "auth_self",
+      "conditional": false
+    },
+    {
+      "id": "auth_verifyPassword",
+      "method": "POST",
+      "path": "/auth/password",
+      "middleware": "authLimiter",
+      "exposure": "reference-only: authentication lifecycle",
+      "parameters": [],
+      "handler": "auth_verifyPassword",
+      "conditional": false
+    },
+    {
+      "id": "auth_logout",
+      "method": "POST",
+      "path": "/auth/logout",
+      "middleware": "authLimiter",
+      "exposure": "reference-only: authentication lifecycle",
+      "parameters": [],
+      "handler": "auth_logout",
+      "conditional": false
+    },
+    {
+      "id": "auth_addMasterPin",
+      "method": "POST",
+      "path": "/auth/addMaster/pin",
+      "middleware": "authLimiter",
+      "exposure": "reference-only: authentication lifecycle",
+      "parameters": [],
+      "handler": "auth_addMasterPin",
+      "conditional": false
+    },
+    {
+      "id": "auth_addMasterCallback",
+      "method": "POST",
+      "path": "/auth/addMaster/callback",
+      "middleware": "authLimiter",
+      "exposure": "reference-only: authentication lifecycle",
+      "parameters": [],
+      "handler": "auth_addMasterCallback",
+      "conditional": false
+    },
+    {
+      "id": "auth_addMasterSave",
+      "method": "POST",
+      "path": "/auth/addMaster/save",
+      "middleware": "authLimiter",
+      "exposure": "reference-only: authentication lifecycle",
+      "parameters": [],
+      "handler": "auth_addMasterSave",
+      "conditional": false
+    },
+    {
+      "id": "auth_providerRedirect",
+      "method": "GET",
+      "path": "/auth/cfxre/redirect",
+      "middleware": "authLimiter",
+      "exposure": "reference-only: authentication lifecycle",
+      "parameters": [],
+      "handler": "auth_providerRedirect",
+      "conditional": false
+    },
+    {
+      "id": "auth_providerCallback",
+      "method": "POST",
+      "path": "/auth/cfxre/callback",
+      "middleware": "authLimiter",
+      "exposure": "reference-only: authentication lifecycle",
+      "parameters": [],
+      "handler": "auth_providerCallback",
+      "conditional": false
+    },
+    {
+      "id": "auth_changePassword",
+      "method": "POST",
+      "path": "/auth/changePassword",
+      "middleware": "apiAuthMw",
+      "exposure": "reference-only: authentication lifecycle",
+      "parameters": [],
+      "handler": "auth_changePassword",
+      "conditional": false
+    },
+    {
+      "id": "auth_getIdentifiers",
+      "method": "GET",
+      "path": "/auth/getIdentifiers",
+      "middleware": "apiAuthMw",
+      "exposure": "reference-only: authentication lifecycle",
+      "parameters": [],
+      "handler": "auth_getIdentifiers",
+      "conditional": false
+    },
+    {
+      "id": "auth_changeIdentifiers",
+      "method": "POST",
+      "path": "/auth/changeIdentifiers",
+      "middleware": "apiAuthMw",
+      "exposure": "reference-only: authentication lifecycle",
+      "parameters": [],
+      "handler": "auth_changeIdentifiers",
+      "conditional": false
+    },
+    {
+      "id": "adminManager_getModal",
+      "method": "POST",
+      "path": "/adminManager/getModal/:modalType",
+      "middleware": "webAuthMw",
+      "exposure": "experimental",
+      "parameters": [
+        "modalType"
+      ],
+      "handler": "adminManager_getModal",
+      "conditional": false
+    },
+    {
+      "id": "adminManager_actions",
+      "method": "POST",
+      "path": "/adminManager/:action",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [
+        "action"
+      ],
+      "handler": "adminManager_actions",
+      "conditional": false
+    },
+    {
+      "id": "setup_post",
+      "method": "POST",
+      "path": "/setup/:action",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [
+        "action"
+      ],
+      "handler": "setup_post",
+      "conditional": false
+    },
+    {
+      "id": "deployer_status",
+      "method": "GET",
+      "path": "/deployer/status",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "deployer_status",
+      "conditional": false
+    },
+    {
+      "id": "deployer_actions",
+      "method": "POST",
+      "path": "/deployer/recipe/:action",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [
+        "action"
+      ],
+      "handler": "deployer_actions",
+      "conditional": false
+    },
+    {
+      "id": "settings_getConfigs",
+      "method": "GET",
+      "path": "/settings/configs",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "settings_getConfigs",
+      "conditional": false
+    },
+    {
+      "id": "settings_saveConfigs",
+      "method": "POST",
+      "path": "/settings/configs/:card",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [
+        "card"
+      ],
+      "handler": "settings_saveConfigs",
+      "conditional": false
+    },
+    {
+      "id": "settings_getBanTemplates",
+      "method": "GET",
+      "path": "/settings/banTemplates",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "settings_getBanTemplates",
+      "conditional": false
+    },
+    {
+      "id": "settings_saveBanTemplates",
+      "method": "POST",
+      "path": "/settings/banTemplates",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "settings_saveBanTemplates",
+      "conditional": false
+    },
+    {
+      "id": "settings_resetServerDataPath",
+      "method": "POST",
+      "path": "/settings/resetServerDataPath",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "settings_resetServerDataPath",
+      "conditional": false
+    },
+    {
+      "id": "masterActions_getBackup",
+      "method": "GET",
+      "path": "/masterActions/backupDatabase",
+      "middleware": "webAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "masterActions_getBackup",
+      "conditional": false
+    },
+    {
+      "id": "masterActions_actions",
+      "method": "POST",
+      "path": "/masterActions/:action",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [
+        "action"
+      ],
+      "handler": "masterActions_actions",
+      "conditional": false
+    },
+    {
+      "id": "fxserver_controls",
+      "method": "POST",
+      "path": "/fxserver/controls",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "fxserver_controls",
+      "conditional": false
+    },
+    {
+      "id": "fxserver_commands",
+      "method": "POST",
+      "path": "/fxserver/commands",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "fxserver_commands",
+      "conditional": false
+    },
+    {
+      "id": "fxserver_downloadLog",
+      "method": "GET",
+      "path": "/fxserver/downloadLog",
+      "middleware": "webAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "fxserver_downloadLog",
+      "conditional": false
+    },
+    {
+      "id": "fxserver_schedule",
+      "method": "POST",
+      "path": "/fxserver/schedule",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "fxserver_schedule",
+      "conditional": false
+    },
+    {
+      "id": "cfgEditor_save",
+      "method": "POST",
+      "path": "/cfgEditor/save",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "cfgEditor_save",
+      "conditional": false
+    },
+    {
+      "id": "intercom",
+      "method": "POST",
+      "path": "/intercom/:scope",
+      "middleware": "intercomAuthMw",
+      "exposure": "blocked: private intercom",
+      "parameters": [
+        "scope"
+      ],
+      "handler": "intercom",
+      "conditional": false
+    },
+    {
+      "id": "diagnostics_getDiagnostics",
+      "method": "GET",
+      "path": "/diagnostics/getDiagnostics",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "diagnostics_getDiagnostics",
+      "conditional": false
+    },
+    {
+      "id": "diagnostics_sendReport",
+      "method": "POST",
+      "path": "/diagnostics/sendReport",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "diagnostics_sendReport",
+      "conditional": false
+    },
+    {
+      "id": "advanced_runCommand",
+      "method": "POST",
+      "path": "/advanced/run",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "advanced_runCommand",
+      "conditional": false
+    },
+    {
+      "id": "serverLogPartial",
+      "method": "GET",
+      "path": "/serverLog/partial",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "serverLogPartial",
+      "conditional": false
+    },
+    {
+      "id": "systemLogs",
+      "method": "GET",
+      "path": "/systemLog/:scope",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [
+        "scope"
+      ],
+      "handler": "systemLogs",
+      "conditional": false
+    },
+    {
+      "id": "perfChart",
+      "method": "GET",
+      "path": "/perfChartData/:thread",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [
+        "thread"
+      ],
+      "handler": "perfChart",
+      "conditional": false
+    },
+    {
+      "id": "playerDrops",
+      "method": "GET",
+      "path": "/playerDropsData",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "playerDrops",
+      "conditional": false
+    },
+    {
+      "id": "history_stats",
+      "method": "GET",
+      "path": "/history/stats",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "history_stats",
+      "conditional": false
+    },
+    {
+      "id": "history_search",
+      "method": "GET",
+      "path": "/history/search",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "history_search",
+      "conditional": false
+    },
+    {
+      "id": "history_actionModal",
+      "method": "GET",
+      "path": "/history/action",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "history_actionModal",
+      "conditional": false
+    },
+    {
+      "id": "history_actions",
+      "method": "POST",
+      "path": "/history/:action",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [
+        "action"
+      ],
+      "handler": "history_actions",
+      "conditional": false
+    },
+    {
+      "id": "player_modal",
+      "method": "GET",
+      "path": "/player",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "player_modal",
+      "conditional": false
+    },
+    {
+      "id": "player_stats",
+      "method": "GET",
+      "path": "/player/stats",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "player_stats",
+      "conditional": false
+    },
+    {
+      "id": "player_search",
+      "method": "GET",
+      "path": "/player/search",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [],
+      "handler": "player_search",
+      "conditional": false
+    },
+    {
+      "id": "player_checkJoin",
+      "method": "POST",
+      "path": "/player/checkJoin",
+      "middleware": "intercomAuthMw",
+      "exposure": "blocked: private intercom",
+      "parameters": [],
+      "handler": "player_checkJoin",
+      "conditional": false
+    },
+    {
+      "id": "player_actions",
+      "method": "POST",
+      "path": "/player/:action",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [
+        "action"
+      ],
+      "handler": "player_actions",
+      "conditional": false
+    },
+    {
+      "id": "whitelist_list",
+      "method": "GET",
+      "path": "/whitelist/:table",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [
+        "table"
+      ],
+      "handler": "whitelist_list",
+      "conditional": false
+    },
+    {
+      "id": "whitelist_actions",
+      "method": "POST",
+      "path": "/whitelist/:table/:action",
+      "middleware": "apiAuthMw",
+      "exposure": "experimental",
+      "parameters": [
+        "table",
+        "action"
+      ],
+      "handler": "whitelist_actions",
+      "conditional": false
+    },
+    {
+      "id": "host_status",
+      "method": "GET",
+      "path": "/host/status",
+      "middleware": "hostAuthMw",
+      "exposure": "host-status",
+      "parameters": [],
+      "handler": "host_status",
+      "conditional": false
+    },
+    {
+      "id": "dev_get",
+      "method": "GET",
+      "path": "/dev/:scope",
+      "middleware": "none",
+      "exposure": "blocked: development-only",
+      "parameters": [
+        "scope"
+      ],
+      "handler": "dev_get",
+      "conditional": true
+    },
+    {
+      "id": "dev_post",
+      "method": "POST",
+      "path": "/dev/:scope",
+      "middleware": "none",
+      "exposure": "blocked: development-only",
+      "parameters": [
+        "scope"
+      ],
+      "handler": "dev_post",
+      "conditional": true
+    }
+  ],
+  "scope": "All 58 registrations in the pinned central HTTP router, including two development-only routes. Does not enumerate static/SPA fallback handlers, WebSocket message types, native functions, or dynamically selected action values."
+}
