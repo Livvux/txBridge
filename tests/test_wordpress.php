@@ -103,6 +103,17 @@ test('PHP webhook signature matches independent Python fixture', function() {
     $v = json_decode(file_get_contents(__DIR__ . '/protocol-vectors.json'), true);
     check(TXBridge_Signing::verifyWebhook($v['server'], $v['eventId'], $v['timestamp'], $v['webhookSignature'], $v['eventBody'], $v['webhookSecret'], 1700000000));
 });
+test('PHP matches every Lua-generated signing vector', function() {
+    $v = json_decode(file_get_contents(__DIR__ . '/signing-vectors.json'), true);
+    foreach ($v['requests'] as $c) {
+        $canonical = TXBridge_Signing::canonical($c['serverId'], $c['keyId'], $c['method'], $c['path'], $c['timestamp'], $c['nonce'], $c['idempotencyKey'], $c['body']);
+        check($canonical === $c['canonical']); check(hash_hmac('sha256', $canonical, $c['secret']) === $c['signature']);
+    }
+    foreach ($v['webhooks'] as $c) {
+        check(TXBridge_Signing::webhookCanonical($c['serverId'], $c['eventId'], $c['timestamp'], $c['body']) === $c['canonical']);
+        check(TXBridge_Signing::verifyWebhook($c['serverId'], $c['eventId'], $c['timestamp'], $c['signature'], $c['body'], $c['secret'], (int)$c['timestamp']));
+    }
+});
 test('all WordPress routes have explicit permissions callbacks', function() { global $routes; TXBridge_WordPress::registerRoutes(); check(count($routes) === 4); foreach ($routes as $r) { check(is_callable($r['permission_callback'])); } });
 test('admin endpoint rejects non-administrator', function() { check(!TXBridge_WordPress::authorizeAdmin()); });
 test('admin endpoint accepts manage_options capability', function() { global $admin; $admin = true; check(TXBridge_WordPress::authorizeAdmin()); $admin = false; });

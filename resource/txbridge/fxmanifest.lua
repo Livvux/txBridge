@@ -4,7 +4,7 @@ server_only 'yes'
 
 author 'txBridge contributors'
 description 'Authenticated FiveM / txAdmin event and application bridge'
-version '0.1.0'
+version '0.1.1'
 
 server_scripts {
     'config.lua',

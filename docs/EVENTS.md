@@ -37,7 +37,7 @@ Deprecated names, off by default: `playerWhitelisted`, `healedPlayer`, `skippedN
 
 Player/admin names, messages/reasons, and console-command text are redacted by default. Identifier fields become keyed HMAC pseudonyms when a separate privacy secret is configured; without it they are `[redacted]`. Hardware-token fields and explicitly prohibited credential/IP fields remain redacted. Pseudonyms are still linkable data, not guaranteed anonymous data.
 
-Enable individual `Config.Privacy` fields only after deciding who needs those data and for how long. Redaction happens before normal event persistence/delivery. Oversized payloads are replaced by a truncation marker; deep objects and long strings/collections are bounded. Custom publishers are trusted code: arbitrary secret-bearing property names cannot be recognized by a generic sanitizer. Do not publish secrets or raw sensitive data at all.
+Enable individual `Config.Privacy` fields only after deciding who needs those data and for how long. Redaction happens before normal event persistence/delivery. Oversized payloads are replaced by a truncation marker; deep objects and long strings/collections are bounded (strings to 2048 bytes, cut on a UTF-8 code point boundary). Custom publishers are trusted code: arbitrary secret-bearing property names cannot be recognized by a generic sanitizer. Do not publish secrets or raw sensitive data at all.
 
 The experimental upstream API does **not** use event redaction. Its privileged responses may contain full txAdmin records; isolate it from public UI and low-trust clients.
 

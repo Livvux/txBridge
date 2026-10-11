@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "txBridge Lua resource API",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "All 21 bridge operations. HMAC signs TXBRIDGE1, server ID, key ID, method, resource-relative raw target, timestamp, nonce, idempotency key and body SHA256, newline-separated with no trailing newline. A static API key is NOT sufficient. See AUTHENTICATION.md. This is not an OpenAPI contract for txAdmin internal handlers.",
     "license": {
       "name": "MIT"

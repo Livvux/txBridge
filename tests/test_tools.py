@@ -17,6 +17,23 @@ class ToolTests(unittest.TestCase):
         v=json.loads((ROOT/'tests/protocol-vectors.json').read_text())
         h=client.request_headers(v['server'],v['key'],v['secret'],v['method'],v['path'],v['body'].encode(),v['idempotency'],v['timestamp'],v['nonce'])
         self.assertEqual(h['X-TxBridge-Signature'],v['requestSignature'])
+    def test_stdlib_hmac_matches_lua_generated_vectors(self):
+        import hashlib, hmac
+        v=json.loads((ROOT/'tests/signing-vectors.json').read_text(encoding='utf-8'))
+        sha=lambda s: hashlib.sha256(s.encode()).hexdigest()
+        for c in v['requests']:
+            canonical='\n'.join(['TXBRIDGE1',c['serverId'],c['keyId'],c['method'],c['path'],c['timestamp'],c['nonce'],c['idempotencyKey'],sha(c['body'])])
+            self.assertEqual(canonical,c['canonical'],c['name'])
+            self.assertEqual(hmac.new(c['secret'].encode(),canonical.encode(),hashlib.sha256).hexdigest(),c['signature'],c['name'])
+        for c in v['webhooks']:
+            canonical='\n'.join(['TXBRIDGE-WEBHOOK1',c['serverId'],c['eventId'],c['timestamp'],sha(c['body'])])
+            self.assertEqual(canonical,c['canonical'],c['name'])
+            self.assertEqual(hmac.new(c['secret'].encode(),canonical.encode(),hashlib.sha256).hexdigest(),c['signature'],c['name'])
+    def test_cli_matches_lua_generated_request_vectors(self):
+        v=json.loads((ROOT/'tests/signing-vectors.json').read_text(encoding='utf-8'))
+        for c in v['requests']:
+            h=client.request_headers(c['serverId'],c['keyId'],c['secret'],c['method'],c['path'],c['body'].encode(),c['idempotencyKey'],c['timestamp'],c['nonce'])
+            self.assertEqual(h['X-TxBridge-Signature'],c['signature'],c['name'])
     def test_body_mutation_changes_signature(self):
         a=client.request_headers('main','wordpress','a'*64,'POST','/v1/actions/announce',b'{}','abcdef0123456789','1700000000','a'*32)
         b=client.request_headers('main','wordpress','a'*64,'POST','/v1/actions/announce',b'{ }','abcdef0123456789','1700000000','a'*32)
