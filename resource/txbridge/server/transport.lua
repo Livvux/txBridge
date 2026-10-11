@@ -31,15 +31,21 @@ end
 function B.webhookCanonical(serverId,eventId,timestamp,body)
     return table.concat({'TXBRIDGE-WEBHOOK1',serverId,eventId,timestamp,B.crypto.sha256(body)},'\n')
 end
+-- Queue and dead-letter limits apply per consumer, so one unreachable consumer cannot starve another.
+local function countFor(list,endpoint)
+    local n=0; for _,item in ipairs(list) do if item.endpoint==endpoint then n=n+1 end end; return n
+end
 local function removeDelivery(id)
     for i,item in ipairs(B.journal.outbox) do if item.id==id then table.remove(B.journal.outbox,i); return item end end
 end
 function B.deadLetter(item,reason)
     removeDelivery(item.id)
     item.lastError=reason; item.failedAt=os.time()
-    B.journal.deadLetters[#B.journal.deadLetters+1]=item
-    while #B.journal.deadLetters>Config.Delivery.maxDeadLetters do
-        table.remove(B.journal.deadLetters,1); B.journal.dropped=B.journal.dropped+1
+    local dead=B.journal.deadLetters
+    dead[#dead+1]=item
+    while countFor(dead,item.endpoint)>Config.Delivery.maxDeadLetters do
+        for i,old in ipairs(dead) do if old.endpoint==item.endpoint then table.remove(dead,i); break end end
+        B.journal.dropped=B.journal.dropped+1
     end
     B.metrics.failed=B.metrics.failed+1
     B.save('journal',B.journal)
@@ -49,7 +55,7 @@ function B.enqueue(event)
     for endpoint,cfg in pairs(Config.Webhooks) do
         local url=GetConvar(cfg.urlConvar,'')
         if url~='' and (cfg.events['*'] or cfg.events[event.type]) then
-            if #B.journal.outbox>=Config.Delivery.maxQueue then
+            if countFor(B.journal.outbox,endpoint)>=Config.Delivery.maxQueue then
                 B.journal.dropped=B.journal.dropped+1; B.metrics.queueOverflow=B.metrics.queueOverflow+1
             else
                 B.journal.outbox[#B.journal.outbox+1]={
@@ -117,9 +123,9 @@ function B.deliveryStatus()
     return {endpoints=endpoints,pending=#B.journal.outbox,deadLetters=#B.journal.deadLetters,dropped=B.journal.dropped}
 end
 function B.retryDelivery(id)
-    B.check(#B.journal.outbox<Config.Delivery.maxQueue,503,'queue_full','Delivery queue full.')
     for i,item in ipairs(B.journal.deadLetters) do
         if item.id==id then
+            B.check(countFor(B.journal.outbox,item.endpoint)<Config.Delivery.maxQueue,503,'queue_full','Delivery queue full.')
             table.remove(B.journal.deadLetters,i)
             item.attempts=0; item.nextAt=os.time(); item.createdAt=os.time(); item.lastError=nil; item.failedAt=nil
             B.journal.outbox[#B.journal.outbox+1]=item; B.save('journal',B.journal)

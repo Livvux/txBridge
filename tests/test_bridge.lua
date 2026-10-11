@@ -250,6 +250,37 @@ test('modly consumer slot reads with its own scopes and receives signed webhooks
     eq(h['X-TxBridge-Signature'],B.crypto.hmac(convars.txbridge_modly_webhook_secret,B.webhookCanonical(h['X-TxBridge-Server'],h['X-TxBridge-Event'],h['X-TxBridge-Timestamp'],modly.body)))
     convars.txbridge_modly_webhook_url=nil; convars.txbridge_modly_webhook_secret=nil
 end)
+test('one slow consumer cannot starve another consumer of queue or dead-letter space',function()
+    convars.txbridge_modly_webhook_url='https://modly.example.test/api/fivem/x/webhook'; convars.txbridge_modly_webhook_secret=string.rep('f',64)
+    local oldQueue,oldDead=Config.Delivery.maxQueue,Config.Delivery.maxDeadLetters
+    Config.Delivery.maxQueue=2; Config.Delivery.maxDeadLetters=1
+    B.journal.outbox={}; B.journal.deadLetters={}
+    local function count(list,endpoint) local n=0; for _,i in ipairs(list) do if i.endpoint==endpoint then n=n+1 end end; return n end
+    -- modly's queue is full of undelivered items; WordPress must still get new events
+    B.journal.outbox={{id='a--modly',eventId='a',endpoint='modly',type='x',body='{}',createdAt=os.time(),nextAt=os.time()+999,attempts=1},
+        {id='b--modly',eventId='b',endpoint='modly',type='x',body='{}',createdAt=os.time(),nextAt=os.time()+999,attempts=1}}
+    B.publish('custom.fair',{})
+    eq(count(B.journal.outbox,'wordpress'),1); eq(count(B.journal.outbox,'modly'),2)
+    -- a modly dead letter must not evict WordPress's retained dead letter
+    B.deadLetter({id='w--wordpress',eventId='w',endpoint='wordpress',type='x',body='{}',createdAt=os.time(),attempts=8},'http_500')
+    B.deadLetter({id='m1--modly',eventId='m1',endpoint='modly',type='x',body='{}',createdAt=os.time(),attempts=8},'http_500')
+    B.deadLetter({id='m2--modly',eventId='m2',endpoint='modly',type='x',body='{}',createdAt=os.time(),attempts=8},'http_500')
+    eq(count(B.journal.deadLetters,'wordpress'),1); eq(count(B.journal.deadLetters,'modly'),1)
+    Config.Delivery.maxQueue=oldQueue; Config.Delivery.maxDeadLetters=oldDead
+    B.journal.outbox={}; B.journal.deadLetters={}; convars.txbridge_modly_webhook_url=nil; convars.txbridge_modly_webhook_secret=nil
+end)
+test('legacy float IDs in stored events and queued webhook bodies are repaired on load',function()
+    kvp['txbridge:journal']=json.encode({sequence=9.0,dropped=0,audit={},deadLetters={},
+        events={{version=1,id='main-9.0',sequence=9.0,serverId='main',type='custom.x',origin='bridge',emittedAt=1700000000.0,data={}}},
+        outbox={{id='main-9.0--wordpress',eventId='main-9.0',endpoint='wordpress',type='custom.x',createdAt=1700000000.0,nextAt=1700000000.0,attempts=1.0,
+            body='{"version":1,"id":"main-9.0","sequence":9.0,"serverId":"main","type":"custom.x","origin":"bridge","emittedAt":1700000000.0,"data":{}}'}}})
+    kvp['txbridge:boot']='{"counter":5}'
+    dofile(base..'server/core.lua')
+    eq(B.journal.events[1].id,'main-9')
+    local item=B.journal.outbox[1]
+    eq(item.eventId,'main-9'); eq(item.id,'main-9--wordpress')
+    local body=json.decode(item.body); eq(body.id,'main-9'); eq(math.type(body.sequence),'integer'); eq(math.type(body.emittedAt),'integer')
+end)
 test('counters stay integers after a KVP round trip that returns floats',function()
     kvp['txbridge:journal']='{"sequence":7.0,"events":[{"version":1,"id":"main-7","sequence":7.0,"serverId":"main","type":"custom.x","origin":"bridge","emittedAt":1700000000.0,"data":{}}],"audit":[],"outbox":[],"deadLetters":[],"dropped":2.0}'
     kvp['txbridge:boot']='{"counter":4.0}'

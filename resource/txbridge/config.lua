@@ -98,8 +98,8 @@ Config = {
         },
     },
     Delivery = {
-        maxQueue = 500,
-        maxDeadLetters = 100,
+        maxQueue = 500,        -- per consumer endpoint
+        maxDeadLetters = 100,  -- per consumer endpoint
         maxAttempts = 8,
         maxAgeSeconds = 86400,
         timeoutMs = 10000,

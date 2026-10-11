@@ -35,5 +35,5 @@ jobs:
           npm test
       - name: Release manifest is current
         run: |
-          git ls-files | grep -vx MANIFEST.sha256 | sort | xargs sha256sum > /tmp/manifest
+          git ls-files | grep -vx MANIFEST.sha256 | LC_ALL=C sort | xargs sha256sum > /tmp/manifest
           diff -u MANIFEST.sha256 /tmp/manifest

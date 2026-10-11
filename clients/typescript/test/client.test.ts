@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { after, before, test } from "node:test";
-import { normalizeBaseUrl, TxBridgeClient, TxBridgeError, verifyRequest, type HttpMethod } from "../src/index.ts";
+import { z } from "zod";
+import { normalizeBaseUrl, PlayersSchema, TxBridgeClient, TxBridgeError, verifyRequest, type HttpMethod } from "../src/index.ts";
+
+const StatusAny = z.unknown();
 
 const SECRET = "c".repeat(64);
 const seen = new Set<string>();
@@ -43,6 +46,15 @@ const server = createServer((req, res) => {
     if (!auth.ok) return send(401, { ok: false, error: { code: auth.reason, message: "Authentication failed." } });
     received.push({ method: req.method!, path, body, idempotencyKey: auth.idempotencyKey });
     if (path === "/v1/status") return send(200, { ok: true, data: status });
+    if (path === "/v1/health") return send(200, { ok: true, data: { healthy: true, serverId: "main" } });
+    if (path === "/v1/capabilities") {
+      return send(200, { ok: true, data: { version: "0.1.1", serverId: "main", events: ["txAdmin:events:announcement"], signing: "TXBRIDGE1", webhookSigning: "TXBRIDGE-WEBHOOK1", guarantees: { exactlyOnce: false } } });
+    }
+    if (path === "/v1/txadmin/state") return send(200, { ok: true, data: { observed: { complete: false, since: 1_700_000_000, admins: {} }, authoritative: false } });
+    if (/^\/v1\/players\/\d+\/actions\/(kick|message)$/.test(path)) return send(200, { ok: true, data: { requested: true, txAdminAction: false } });
+    if (path === "/v1/resources/txb_dummy/actions/restart") {
+      return send(200, { ok: true, data: { resource: "txb_dummy", operation: "restart", before: "started", after: "started", success: true } });
+    }
     if (path === "/v1/players") return send(200, { ok: true, data: { items: [{ id: 1, sessionId: "main-1-1", name: "[redacted]", ping: 40 }] } });
     if (path === "/v1/resources") return send(200, { ok: true, data: { items: [{ name: "chat", state: "started" }, { name: "qb-garages", state: "stopped" }] } });
     if (path.startsWith("/v1/events?")) return send(200, { ok: true, data: { items: [event(2), event(3)], cursor: 3, latest: 3, oldestAvailable: 1, gap: false, authoritative: false } });
@@ -70,6 +82,20 @@ test("read endpoints are signed, validated and typed", async () => {
   assert.ok(received.some((r) => r.path === "/v1/events?after=1&limit=100"), "query string must be part of the signed path");
 });
 
+test("metadata endpoints and native actions are typed", async () => {
+  assert.deepEqual(await client.health(), { healthy: true, serverId: "main" });
+  assert.equal((await client.capabilities()).webhookSigning, "TXBRIDGE-WEBHOOK1");
+  assert.equal((await client.txadminState()).authoritative, false);
+  await client.kickPlayer(1, { sessionId: "main-1-1", reason: "Test" }, "kick_key_0000000001");
+  await client.messagePlayer(1, { sessionId: "main-1-1", message: "Hi" }, "message_key_00000001");
+  assert.equal((await client.resourceAction("txb_dummy", "restart", "restart_key_00000001")).after, "started");
+  assert.deepEqual(received.slice(-3).map((r) => r.path), ["/v1/players/1/actions/kick", "/v1/players/1/actions/message", "/v1/resources/txb_dummy/actions/restart"]);
+  assert.throws(() => client.kickPlayer(0, { sessionId: "x", reason: "x" }, "kick_key_0000000002"), TypeError);
+  assert.throws(() => client.resourceAction("../evil", "stop", "restart_key_00000002"), TypeError);
+  assert.throws(() => client.events({ limit: 101 }), TypeError);
+  await assert.rejects(client.request("GET", "/v1/status", StatusAny, {}), TypeError);
+});
+
 test("every request uses a fresh nonce, so repeated GETs are not replays", async () => {
   await client.status();
   await client.status();
@@ -84,7 +110,7 @@ test("POST carries the caller's idempotency key and a JSON body", async () => {
 });
 
 test("bridge errors surface status and code", async () => {
-  await assert.rejects(client.request("GET", "/v1/audit", (await import("zod")).z.unknown()), (err: unknown) => {
+  await assert.rejects(client.request("GET", "/v1/audit", StatusAny), (err: unknown) => {
     assert.ok(err instanceof TxBridgeError);
     assert.equal(err.kind, "bridge");
     assert.equal(err.status, 403);
@@ -128,6 +154,10 @@ test("timeouts are reported as such", async () => {
   } finally {
     override = undefined;
   }
+});
+
+test("a player that is still connecting (negative ping) does not invalidate the list", () => {
+  assert.equal(PlayersSchema.parse({ items: [{ id: 3, sessionId: "main-1-3", name: "[redacted]", ping: -1 }] }).items[0]!.ping, -1);
 });
 
 test("base URL rules", () => {

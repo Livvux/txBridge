@@ -32,7 +32,26 @@ end
 function B.int(v) return math.tointeger(v) or v end
 B.journal=B.read('journal',{sequence=0,events={},audit={},outbox={},deadLetters={},dropped=0})
 B.journal.sequence=B.int(B.journal.sequence); B.journal.dropped=B.int(B.journal.dropped)
-for _,e in ipairs(B.journal.events) do e.sequence=B.int(e.sequence); e.emittedAt=B.int(e.emittedAt) end
+local function fixEvent(e)
+    local changed=math.type(e.sequence)=='float' or math.type(e.emittedAt)=='float'
+    e.sequence=B.int(e.sequence); e.emittedAt=B.int(e.emittedAt)
+    if type(e.serverId)=='string' and e.sequence then
+        local id=e.serverId..'-'..tostring(e.sequence)
+        changed=changed or e.id~=id; e.id=id
+    end
+    return changed
+end
+for _,e in ipairs(B.journal.events) do fixEvent(e) end
+-- Queued bodies were encoded before the fix; re-encode only those that actually carry a float.
+for _,list in ipairs({B.journal.outbox,B.journal.deadLetters}) do
+    for _,item in ipairs(list) do
+        item.attempts=B.int(item.attempts); item.createdAt=B.int(item.createdAt); item.nextAt=B.int(item.nextAt)
+        local ok,event=pcall(json.decode,item.body or '')
+        if ok and type(event)=='table' and fixEvent(event) then
+            item.body=json.encode(event); item.eventId=event.id; item.id=event.id..'--'..item.endpoint
+        end
+    end
+end
 B.boot=B.read('boot',{counter=0})
 B.boot.counter=B.int(B.boot.counter)
 B.boot.counter=B.boot.counter+1

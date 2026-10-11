@@ -68,7 +68,7 @@ test("webhook signatures match every Lua-generated vector", () => {
 });
 
 test("byte bodies hash identically to their UTF-8 string form", () => {
-  const unicode = vectors.requests.find((v) => /[^\x00-\x7f]/.test(v.body))!;
+  const unicode = vectors.requests.find((v) => /[^\p{ASCII}]/u.test(v.body))!;
   assert.equal(sha256Hex(new TextEncoder().encode(unicode.body)), unicode.bodySha256);
 });
 

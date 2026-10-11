@@ -70,6 +70,7 @@ test("signed but contradictory envelopes are rejected", () => {
     { body: JSON.stringify(event({ version: 2 })) },
     { body: JSON.stringify(event({ sequence: 42.5 })) },
     { body: JSON.stringify(event({ type: "evil.type" })) },
+    { body: JSON.stringify(event({ emittedAt: 9_000_000_000_000 })) },
     { body: "not json" },
   ];
   for (const c of cases) {
