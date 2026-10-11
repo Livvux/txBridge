@@ -3,14 +3,14 @@
 <img width="1672" height="941" alt="txBridge" src="https://github.com/user-attachments/assets/58137119-cbf4-4e1a-8962-a7d3ef838b1c" />
 
 
-**Version 0.1.0 — implementation and integration-test candidate.** Server-only Lua resource, WordPress plugin, signed HTTP client, OpenAPI specification, and deployment documentation. No paid dependency, framework dependency, RCON password, or monitor-token extraction is required for the normal integration.
+**Version 0.1.1 — implementation and integration-test candidate (not yet verified against a live FXServer).** Server-only Lua resource, consumer-agnostic signed API and webhooks, TypeScript client, WordPress plugin, Python CLI, OpenAPI specification, and deployment documentation. No paid dependency, framework dependency, RCON password, or monitor-token extraction is required for the normal integration.
 
 ```text
                      authenticated, scoped requests
-WordPress / your app ───────── HTTPS reverse proxy ────────┐
+Modly · WordPress · your app ── HTTPS reverse proxy ──────┐   (optional pull)
                                                          ▼
                                                   FiveM: txbridge
-WordPress webhook inbox ◀──── signed HTTPS events ────────┤
+Consumer webhook inbox ◀────── signed HTTPS events ───────┤   (outbound only)
                                                          ├─ FiveM server natives
                                                          ├─ 17 documented txAdmin events
                                                          ├─ optional host-status endpoint
@@ -25,6 +25,8 @@ WordPress webhook inbox ◀──── signed HTTPS events ──────�
 | Data API | Status, players, resources, event cursor, observed txAdmin state, private audit, queue monitoring |
 | Controlled native actions | Announce, direct chat, kick, resource start/stop/restart; disabled until explicitly granted |
 | Delivery | Persistent bounded outbox, signed webhooks, retries, dead letters, retry endpoint |
+| Consumers | Named slots with separate secrets and scopes: `wordpress` (legacy convars) and `modly`; add more in `config.lua` ([Consumers](docs/CONSUMERS.md)) |
+| TypeScript client | `clients/typescript`: signed, validated API client and webhook verifier ([README](clients/typescript/README.md)) |
 | WordPress | Signed durable inbox, protected application client, administrator endpoints, opt-in public shortcode |
 | txAdmin HTTP inventory | All 58 registrations in the pinned central router, including two development-only registrations |
 | Experimental adapter | 42 internal route templates, disabled by default; explicit exact-parameter grants, per-route scopes and authorized session |
@@ -37,8 +39,11 @@ Upstream reviewed: `citizenfx/txAdmin`, commit **8a9a41410000fd92a527fe11bae2b8e
 ## Start here
 
 1. Copy `resource/txbridge` into your FXServer `resources` directory. Merge `examples/server.cfg` before `ensure txbridge`, replacing all placeholders with independent secrets.
-2. Install the `wordpress/txbridge-wordpress` plugin, configure `examples/wp-config.php`, and use your WordPress HTTPS webhook URL.
-3. For requests from WordPress back to FiveM, configure the restricted HTTPS proxy in `deploy/nginx.conf.example`. Outbound-only event delivery does not need an inbound public API.
+2. Connect at least one consumer ([Consumers](docs/CONSUMERS.md)):
+   - **Modly:** add the server in the Modly dashboard and paste the generated `server.cfg` block.
+   - **WordPress:** install `wordpress/txbridge-wordpress`, configure `examples/wp-config.php`, and use your WordPress HTTPS webhook URL.
+   - **Your app:** use `clients/typescript` or implement the protocol against `tests/signing-vectors.json`.
+3. For requests from a consumer back to FiveM, configure the restricted HTTPS proxy in `deploy/nginx.conf.example`. Outbound-only event delivery does not need an inbound public API.
 
 Read [Installation](docs/INSTALLATION.md) before exposing any endpoint. For a public player-count widget, explicitly set `public_status` to `true`, then insert:
 
@@ -48,7 +53,7 @@ Read [Installation](docs/INSTALLATION.md) before exposing any endpoint. For a pu
 
 ## Documentation
 
-[Installation](docs/INSTALLATION.md) · [HTTP API](docs/API.md) · [Authentication](docs/AUTHENTICATION.md) · [Events](docs/EVENTS.md) · [txAdmin route coverage](docs/TXADMIN.md) · [WordPress](docs/WORDPRESS.md) · [Functions and modules](docs/FUNCTIONS.md) · [Security and operations](docs/SECURITY.md) · [Tests and acceptance](docs/TESTING.md) · [Sources](docs/SOURCES.md)
+[Installation](docs/INSTALLATION.md) · [Consumers](docs/CONSUMERS.md) · [TypeScript client](clients/typescript/README.md) · [HTTP API](docs/API.md) · [Authentication](docs/AUTHENTICATION.md) · [Events](docs/EVENTS.md) · [txAdmin route coverage](docs/TXADMIN.md) · [WordPress](docs/WORDPRESS.md) · [Functions and modules](docs/FUNCTIONS.md) · [Security and operations](docs/SECURITY.md) · [Tests and acceptance](docs/TESTING.md) · [Sources](docs/SOURCES.md)
 
 A standalone reading copy is at `docs/handbook.html`. Machine-readable contracts are `docs/openapi.yaml`, `docs/openapi.json`, `docs/txadmin-routes.json`, and `docs/txadmin-events.json`.
 
@@ -58,10 +63,12 @@ A standalone reading copy is at `docs/handbook.html`. Machine-readable contracts
 python3 tests/run_lua.py
 php tests/test_wordpress.php
 python3 -m unittest discover -s tests -p 'test_*.py'
+lua5.4 tools/signing_vectors.lua --check
 node --check wordpress/txbridge-wordpress/assets/status.js
+(cd clients/typescript && npm ci && npm run typecheck && npm test)
 ```
 
-The Lua runner uses the actual Lua 5.4 shared library with mocked FiveM natives. PHP tests use WordPress/database doubles. **Neither is a live FXServer, txAdmin, WordPress, MySQL, reverse-proxy, or load test.** Complete the staging acceptance checklist before production use.
+The Lua runner uses the actual Lua 5.4 shared library with mocked FiveM natives. PHP tests use WordPress/database doubles. **Neither is a live FXServer, txAdmin, WordPress, MySQL, reverse-proxy, or load test.** Run the nine FXServer acceptance tests and the staging checklist in [Tests and acceptance](docs/TESTING.md) before production use.
 
 ## License
 

@@ -1,0 +1,39 @@
+name: tests
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Lua, PHP and Python toolchain
+        run: sudo apt-get update && sudo apt-get install -y liblua5.4-0 lua5.4 php-cli
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: clients/typescript/package-lock.json
+      - name: Lua resource
+        run: python3 tests/run_lua.py
+      - name: Signing vectors are generated from the current Lua code
+        run: lua5.4 tools/signing_vectors.lua --check
+      - name: WordPress plugin
+        run: |
+          php tests/test_wordpress.php
+          find wordpress -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Python tools
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Browser asset syntax
+        run: node --check wordpress/txbridge-wordpress/assets/status.js
+      - name: TypeScript client
+        working-directory: clients/typescript
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+      - name: Release manifest is current
+        run: |
+          git ls-files | grep -vx MANIFEST.sha256 | sort | xargs sha256sum > /tmp/manifest
+          diff -u MANIFEST.sha256 /tmp/manifest

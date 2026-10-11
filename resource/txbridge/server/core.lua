@@ -1,5 +1,5 @@
 local B = TxBridge
-B.version = '0.1.0'
+B.version = '0.1.1'
 B.revision = '8a9a41410000fd92a527fe11bae2b8eeeb8b10e0'
 B.resource = GetCurrentResourceName()
 B.startedAt = os.time()
@@ -28,8 +28,13 @@ function B.save(key,value)
     -- Native KVP storage is local durability, not a transactional database or an fsync guarantee.
     SetResourceKvp('txbridge:'..key,json.encode(value))
 end
+-- JSON round trips may return whole numbers as floats; IDs like "main-7.0" would break every consumer.
+function B.int(v) return math.tointeger(v) or v end
 B.journal=B.read('journal',{sequence=0,events={},audit={},outbox={},deadLetters={},dropped=0})
+B.journal.sequence=B.int(B.journal.sequence); B.journal.dropped=B.int(B.journal.dropped)
+for _,e in ipairs(B.journal.events) do e.sequence=B.int(e.sequence); e.emittedAt=B.int(e.emittedAt) end
 B.boot=B.read('boot',{counter=0})
+B.boot.counter=B.int(B.boot.counter)
 B.boot.counter=B.boot.counter+1
 B.save('boot',B.boot)
 B.sessionCounter=0
@@ -56,6 +61,13 @@ local forbidden={targetHwids=true,playerHwids=true,hwids=true,tokens=true,ip=tru
 local names={targetName=true,playerName=true,name=true}
 local admins={author=true,adminName=true,actionAuthor=true,revokedBy=true,username=true}
 local text={message=true,reason=true,actionReason=true,kickMessage=true,dropMessage=true,translatedMessage=true}
+-- Byte limit without splitting a UTF-8 code point (continuation bytes are 10xxxxxx).
+function B.truncate(s,max)
+    if #s<=max then return s end
+    local cut=max
+    while cut>0 and (s:byte(cut+1) or 0)&0xC0==0x80 do cut=cut-1 end
+    return s:sub(1,cut)
+end
 function B.sanitize(value,key,depth)
     depth=depth or 0
     if depth>8 then return '[depth-limit]' end
@@ -77,7 +89,7 @@ function B.sanitize(value,key,depth)
             if type(k)=='string' or type(k)=='number' then out[k]=B.sanitize(v,k,depth+1) end
         end
         return out
-    elseif type(value)=='string' then return value:sub(1,2048)
+    elseif type(value)=='string' then return B.truncate(value,2048)
     elseif type(value)=='number' then return value==value and math.abs(value)<1e16 and value or 0
     elseif type(value)=='boolean' then return value end
     return nil

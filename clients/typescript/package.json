@@ -1,0 +1,21 @@
+{
+  "name": "@txbridge/client",
+  "version": "0.1.1",
+  "description": "Strictly typed TypeScript client for the txBridge FiveM API and webhook verification (TXBRIDGE1 / TXBRIDGE-WEBHOOK1).",
+  "license": "MIT",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "files": ["src", "README.md"],
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.1",
+    "typescript": "~5.9.3"
+  }
+}

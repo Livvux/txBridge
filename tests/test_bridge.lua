@@ -212,5 +212,53 @@ test('authorized custom publisher uses custom namespace',function() Config.Event
 test('read-only exports do not return references to mutable state',function() local s=exported.GetStatus(); s.serverId='evil'; eq(B.status().serverId,'main') end)
 test('rate limiter denies excess requests',function() local a,b=Config.Http.burst,Config.Http.requestsPerMinute; Config.Http.burst=2; Config.Http.requestsPerMinute=60; assert(B.rate('test-new-key')); assert(B.rate('test-new-key')); assert(not B.rate('test-new-key')); Config.Http.burst=a; Config.Http.requestsPerMinute=b end)
 test('corrupt KVP is not silently erased',function() kvp['txbridge:bad']='not json'; local ok=pcall(B.read,'bad',{}); assert(not ok) end)
+test('UTF-8 text is truncated on a code point boundary',function()
+    local umlaut=B.sanitize({note=string.rep('a',2047)..'ü'}).note
+    eq(#umlaut,2047); assert(utf8.len(umlaut),'invalid UTF-8')
+    local emoji=B.sanitize({note=string.rep('a',2046)..'🚀'}).note
+    eq(#emoji,2046); assert(utf8.len(emoji),'invalid UTF-8')
+    eq(B.sanitize({note=string.rep('ü',1024)}).note,string.rep('ü',1024))
+end)
+test('signing vectors match the Lua implementation',function()
+    local f=assert(io.open('tests/signing-vectors.json','r')); local v=json.decode(f:read('*a')); f:close()
+    assert(#v.requests>=4 and #v.webhooks>=3,'vector set too small')
+    for _,c in ipairs(v.requests) do
+        local canonical=table.concat({'TXBRIDGE1',c.serverId,c.keyId,c.method,c.path,c.timestamp,c.nonce,c.idempotencyKey,B.crypto.sha256(c.body)},'\n')
+        eq(canonical,c.canonical); eq(B.crypto.hmac(c.secret,canonical),c.signature)
+    end
+    for _,c in ipairs(v.webhooks) do
+        local canonical=B.webhookCanonical(c.serverId,c.eventId,c.timestamp,c.body)
+        eq(canonical,c.canonical); eq(B.crypto.hmac(c.secret,canonical),c.signature)
+    end
+end)
+test('modly consumer slot reads with its own scopes and receives signed webhooks',function()
+    convars.txbridge_modly_secret=string.rep('e',64)
+    local o={key='modly',secret=convars.txbridge_modly_secret}
+    eq(request('GET','/v1/status',nil,o).status,200)
+    eq(request('GET','/v1/resources',nil,o).status,200)
+    eq(request('GET','/v1/audit',nil,o).status,403)
+    eq(request('POST','/v1/actions/announce',{message='Hi'},o).status,403)
+    convars.txbridge_modly_webhook_url='https://modly.example.test/api/fivem/00000000-0000-4000-8000-000000000000/webhook'
+    convars.txbridge_modly_webhook_secret=string.rep('f',64)
+    B.journal.outbox={}; B.publish('custom.modly',{})
+    local endpoints={}; for _,item in ipairs(B.journal.outbox) do endpoints[item.endpoint]=true end
+    assert(endpoints.modly and endpoints.wordpress,'both consumers must be queued')
+    local before=#nativeRequests; responseBehavior=function(_,cb) cb(202,'{}') end; B.pump(); eq(#B.journal.outbox,0)
+    local modly
+    for i=before+1,#nativeRequests do if nativeRequests[i].url==convars.txbridge_modly_webhook_url then modly=nativeRequests[i] end end
+    assert(modly,'modly webhook not sent'); local h=modly.headers
+    eq(h['X-TxBridge-Signature'],B.crypto.hmac(convars.txbridge_modly_webhook_secret,B.webhookCanonical(h['X-TxBridge-Server'],h['X-TxBridge-Event'],h['X-TxBridge-Timestamp'],modly.body)))
+    convars.txbridge_modly_webhook_url=nil; convars.txbridge_modly_webhook_secret=nil
+end)
+test('counters stay integers after a KVP round trip that returns floats',function()
+    kvp['txbridge:journal']='{"sequence":7.0,"events":[{"version":1,"id":"main-7","sequence":7.0,"serverId":"main","type":"custom.x","origin":"bridge","emittedAt":1700000000.0,"data":{}}],"audit":[],"outbox":[],"deadLetters":[],"dropped":2.0}'
+    kvp['txbridge:boot']='{"counter":4.0}'
+    dofile(base..'server/core.lua')
+    eq(math.type(B.journal.sequence),'integer'); eq(math.type(B.journal.dropped),'integer')
+    eq(math.type(B.journal.events[1].sequence),'integer'); eq(math.type(B.journal.events[1].emittedAt),'integer')
+    eq(B.boot.counter,5); eq(math.type(B.boot.counter),'integer')
+    eq(B.publish('custom.after',{}),'main-8')
+    assert(B.session(1):match('^main%-5%-%d+$'),'session ID must not contain a float boot counter')
+end)
 print(('Lua tests: %d passed, %d failed'):format(passed,failed))
 assert(failed==0,'Lua test failures')

@@ -39,6 +39,8 @@ Replace every placeholder; they are intentionally rejected as credentials in the
 
 `serverId` must be unique per actual server, contain only letters/digits/underscore/hyphen, and be 1–64 characters. Preserve KVP storage across ordinary restarts. When cloning a server, wiping persistence, or restoring an old sequence counter, provision a new server ID and reconcile consumers. Reusing an old ID/counter can collide with events already stored in WordPress.
 
+**Modly instead of (or in addition to) WordPress:** the `modly` consumer slot uses its own convars (`txbridge_modly_secret`, `txbridge_modly_webhook_url`, `txbridge_modly_webhook_secret`). Modly generates all three during pairing and shows a ready block once; paste it here as well, before `ensure txbridge`. The WordPress convars may stay empty. Modly detects a reset or reused sequence counter and starts a new journal epoch instead of discarding events; WordPress rejects such events with 409. See [Consumers](CONSUMERS.md).
+
 Run the local console command `txbridge_status` after starting. It reports sequence/queue counts, never credentials. Missing API client secrets prevent that client from authenticating. An invalid configured webhook URL or secret causes initialization to fail instead of silently sending unprotected data.
 
 ## 3. Install WordPress
